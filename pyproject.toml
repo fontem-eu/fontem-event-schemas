@@ -17,7 +17,7 @@ dependencies = [
 include = ["gmr_event_schemas*"]
 
 [tool.setuptools.package-data]
-gmr_event_schemas = ["schemas/v*/**/*.json"]
+gmr_event_schemas = ["schemas/v*/*/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
