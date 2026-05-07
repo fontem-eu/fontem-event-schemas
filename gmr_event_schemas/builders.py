@@ -214,7 +214,7 @@ def upsert_disclosure(
     *,
     system: str,
     disclosure_id: str,
-    company_gmr_id: str,
+    company_gmr_id: str | None = None,
     disclosure_type: str | None = None,
     filed_date: str | None = None,
     year: int | None = None,
@@ -222,12 +222,18 @@ def upsert_disclosure(
     url: str | None = None,
     details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build an UpsertDisclosure payload (v1)."""
+    """Build an UpsertDisclosure payload (v1).
+
+    ``company_gmr_id`` is optional — some regimes (EU lobbying)
+    file under non-Company registrants, in which case the
+    registrant identity rides in ``details``.
+    """
     out: dict[str, Any] = {
         "system": system,
         "disclosure_id": disclosure_id,
-        "company_gmr_id": company_gmr_id,
     }
+    if company_gmr_id:
+        out["company_gmr_id"] = company_gmr_id
     for k, v in (
         ("disclosure_type", disclosure_type),
         ("filed_date", filed_date), ("year", year),
