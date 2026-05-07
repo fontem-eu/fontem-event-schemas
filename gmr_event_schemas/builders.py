@@ -89,6 +89,83 @@ def upsert_company(
     return out
 
 
+def upsert_listing(
+    *,
+    ticker: str,
+    company_gmr_id: str,
+    exchange: str | None = None,
+    currency: str | None = None,
+    active: bool | None = None,
+    isin: str | None = None,
+    mic: str | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertListing payload (v1)."""
+    out: dict[str, Any] = {
+        "ticker": ticker, "company_gmr_id": company_gmr_id,
+    }
+    for k, v in (
+        ("exchange", exchange), ("currency", currency),
+        ("active", active), ("isin", isin), ("mic", mic),
+    ):
+        if v is not None and v != "":
+            out[k] = v
+    return out
+
+
+def upsert_authority(
+    *,
+    authority_id: str,
+    name: str | None = None,
+    country: str | None = None,
+    authority_type: str | None = None,
+    national_id: str | None = None,
+    url: str | None = None,
+    postal_code: str | None = None,
+    city: str | None = None,
+    nuts: str | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertAuthority payload (v1)."""
+    out: dict[str, Any] = {"authority_id": authority_id}
+    for k, v in (
+        ("name", name), ("country", country),
+        ("authority_type", authority_type),
+        ("national_id", national_id), ("url", url),
+        ("postal_code", postal_code), ("city", city), ("nuts", nuts),
+    ):
+        if v is not None and v != "":
+            out[k] = v
+    return out
+
+
+def upsert_contract(
+    *,
+    ted_notice_id: str,
+    title: str | None = None,
+    authority_id: str | None = None,
+    company_gmr_id: str | None = None,
+    publication_date: str | None = None,
+    value_eur: float | None = None,
+    value_currency: str | None = None,
+    value_original: float | None = None,
+    cpv: str | None = None,
+    nuts: str | None = None,
+    language: str | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertContract payload (v1)."""
+    out: dict[str, Any] = {"ted_notice_id": ted_notice_id}
+    for k, v in (
+        ("title", title), ("authority_id", authority_id),
+        ("company_gmr_id", company_gmr_id),
+        ("publication_date", publication_date),
+        ("value_eur", value_eur), ("value_currency", value_currency),
+        ("value_original", value_original),
+        ("cpv", cpv), ("nuts", nuts), ("language", language),
+    ):
+        if v is not None and v != "":
+            out[k] = v
+    return out
+
+
 def assert_same_as(
     *,
     a_iri: str,
