@@ -166,6 +166,98 @@ def upsert_contract(
     return out
 
 
+def upsert_taxonomy_code(
+    *,
+    system: str,
+    code: str,
+    label: str | None = None,
+    label_lang: str | None = None,
+    parent_code: str | None = None,
+    level: int | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertTaxonomyCode payload (v1)."""
+    out: dict[str, Any] = {"system": system, "code": code}
+    for k, v in (
+        ("label", label), ("label_lang", label_lang),
+        ("parent_code", parent_code),
+        ("level", level), ("description", description),
+    ):
+        if v is not None and v != "":
+            out[k] = v
+    return out
+
+
+def upsert_relationship(
+    *,
+    src_iri: str,
+    dst_iri: str,
+    predicate: str,
+    properties: dict[str, Any] | None = None,
+    valid_from: str | None = None,
+    valid_to: str | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertRelationship payload (v1)."""
+    out: dict[str, Any] = {
+        "src_iri": src_iri, "dst_iri": dst_iri, "predicate": predicate,
+    }
+    if properties:
+        out["properties"] = properties
+    if valid_from:
+        out["valid_from"] = valid_from
+    if valid_to:
+        out["valid_to"] = valid_to
+    return out
+
+
+def upsert_disclosure(
+    *,
+    system: str,
+    disclosure_id: str,
+    company_gmr_id: str,
+    disclosure_type: str | None = None,
+    filed_date: str | None = None,
+    year: int | None = None,
+    title: str | None = None,
+    url: str | None = None,
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertDisclosure payload (v1)."""
+    out: dict[str, Any] = {
+        "system": system,
+        "disclosure_id": disclosure_id,
+        "company_gmr_id": company_gmr_id,
+    }
+    for k, v in (
+        ("disclosure_type", disclosure_type),
+        ("filed_date", filed_date), ("year", year),
+        ("title", title), ("url", url),
+    ):
+        if v is not None and v != "":
+            out[k] = v
+    if details:
+        out["details"] = details
+    return out
+
+
+def upsert_exchange_rate(
+    *,
+    base: str,
+    target: str,
+    date: str,
+    rate: float,
+    source: str | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertExchangeRate payload (v1)."""
+    out: dict[str, Any] = {
+        "base": base, "target": target,
+        "date": date, "rate": float(rate),
+    }
+    if source:
+        out["source"] = source
+    return out
+
+
 def assert_same_as(
     *,
     a_iri: str,
