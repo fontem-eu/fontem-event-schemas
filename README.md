@@ -1,6 +1,6 @@
 # fontem-event-schemas
 
-Pydantic models + JSON-schemas for entity events (package: gmr_event_schemas — to be renamed). One module per upsert event type (UpsertCompany, UpsertAuthority, UpsertContract, …). All event producers and consumers depend on this package for shape + version checking.
+Pydantic models + JSON-schemas for entity events (package: fontem_event_schemas — to be renamed). One module per upsert event type (UpsertCompany, UpsertAuthority, UpsertContract, …). All event producers and consumers depend on this package for shape + version checking.
 
 ## Deploy
 

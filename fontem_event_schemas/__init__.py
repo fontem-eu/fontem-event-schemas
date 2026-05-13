@@ -1,4 +1,4 @@
-"""gmr_event_schemas — JSON Schemas + helpers for the gmr_app event log.
+"""fontem_event_schemas — JSON Schemas + helpers for the gmr_app event log.
 
 Every event written to ``events.entity_events`` (in gmr_app) has a
 typed schema that lives under ``v<N>/<category>/<EventType>.json``.
