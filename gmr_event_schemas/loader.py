@@ -1,7 +1,7 @@
 """Locate + parse JSON Schemas at package import time.
 
 The schemas ship inside the package (``importlib.resources``) so a
-deployed sink that has only ``pip install gmr-event-schemas`` can
+deployed sink that has only ``pip install fontem-event-schemas`` can
 still validate without checking out the source repo.
 """
 from __future__ import annotations
