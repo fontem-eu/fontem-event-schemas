@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 authors = [{ name = "Fontem", email = "ops@void42.internal" }]
 license = { text = "Internal-only" }
 dependencies = [
-    "jsonschema>=4.21",
+    "jsonschema>=4.21.1",
 ]
 
 [tool.setuptools.packages.find]
