@@ -31,3 +31,24 @@ jobs:
           missing = shipped - registered
           assert not missing, f'unregistered schemas: {missing}'
           "
+
+  analyze:
+    needs: test
+    runs-on: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: void42/fontem-ci
+          path: .fontem-ci
+          token: ${{ secrets.GMR_CI_READ_TOKEN }}
+
+      - name: Install deps and generate coverage
+        run: |
+          pip install -e .
+          pip install pytest pytest-cov
+          pytest --cov=fontem_event_schemas --cov-report=xml:coverage.xml || true
+
+      - uses: ./.fontem-ci/actions/sonar-scan
+        with:
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
