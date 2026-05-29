@@ -16,7 +16,8 @@
     "value_original":  { "type": ["number", "null"], "description": "Contract value in the original currency." },
     "cpv":             { "type": ["string", "null"], "description": "Primary CPV code." },
     "nuts":            { "type": ["string", "null"], "description": "Place-of-performance NUTS code." },
-    "language":        { "type": ["string", "null"], "description": "Notice language code." }
+    "language":        { "type": ["string", "null"], "description": "Notice language code." },
+    "country":         { "type": ["string", "null"], "description": "ISO 3166-1 alpha-3 country code of the contracting authority (the acquirer). Cascaded onto the Contract at write time because TED contracts are jurisdictionally grouped by the procuring entity, not the awarded vendor." }
   },
   "additionalProperties": false
 }
