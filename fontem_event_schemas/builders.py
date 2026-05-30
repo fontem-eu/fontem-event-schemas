@@ -150,8 +150,14 @@ def upsert_contract(
     cpv: str | None = None,
     nuts: str | None = None,
     language: str | None = None,
+    country: str | None = None,
 ) -> dict[str, Any]:
-    """Build an UpsertContract payload (v1)."""
+    """Build an UpsertContract payload (v1).
+
+    ``country`` is the alpha-3 country of the contracting authority (the
+    acquirer). Cascaded onto the Contract at write time so jurisdictional
+    panels can group contracts without traversing to Authority.
+    """
     out: dict[str, Any] = {"ted_notice_id": ted_notice_id}
     for k, v in (
         ("title", title), ("authority_id", authority_id),
@@ -160,6 +166,7 @@ def upsert_contract(
         ("value_eur", value_eur), ("value_currency", value_currency),
         ("value_original", value_original),
         ("cpv", cpv), ("nuts", nuts), ("language", language),
+        ("country", country),
     ):
         if v is not None and v != "":
             out[k] = v
