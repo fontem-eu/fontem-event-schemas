@@ -6,7 +6,8 @@
   "type": "object",
   "required": ["ted_notice_id"],
   "properties": {
-    "ted_notice_id":   { "type": "string", "minLength": 1, "description": "TED notice ID (or other procurement source notice ID)." },
+    "ted_notice_id":   { "type": "string", "minLength": 1, "description": "TED notice ID (or other procurement source notice ID). For eForms-format notices this is the cbc:ID root identifier — a UUID assigned by the publishing system before TED has materialised a publication-number." },
+    "ted_publication_number": { "type": ["string", "null"], "description": "TED publication-number assigned at publish time (e.g. '295342-2026'). The ETL resolves this via TED's v3 search API so downstream readers can build the canonical detail URL (https://ted.europa.eu/en/notice/-/detail/<publication-number>) directly. Null when the notice is queued but not yet published, or when the search API had no match at ETL time — readers fall back to the runtime lookup endpoint in that case." },
     "title":           { "type": ["string", "null"] },
     "authority_id":    { "type": ["string", "null"], "format": "uuid", "description": "Contracting authority's authority_id." },
     "company_gmr_id":  { "type": ["string", "null"], "format": "uuid", "description": "Awarded company's gmr_id." },
@@ -16,7 +17,8 @@
     "value_original":  { "type": ["number", "null"], "description": "Contract value in the original currency." },
     "cpv":             { "type": ["string", "null"], "description": "Primary CPV code." },
     "nuts":            { "type": ["string", "null"], "description": "Place-of-performance NUTS code." },
-    "language":        { "type": ["string", "null"], "description": "Notice language code." }
+    "language":        { "type": ["string", "null"], "description": "Notice language code." },
+    "country":         { "type": ["string", "null"], "description": "ISO 3166-1 alpha-3 country code of the contracting authority (the acquirer). Cascaded onto the Contract at write time because TED contracts are jurisdictionally grouped by the procuring entity, not the awarded vendor." }
   },
   "additionalProperties": false
 }
