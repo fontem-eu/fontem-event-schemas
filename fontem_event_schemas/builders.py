@@ -137,9 +137,10 @@ def upsert_authority(
     return out
 
 
-def upsert_contract(
+def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     *,
     ted_notice_id: str,
+    ted_publication_number: str | None = None,
     title: str | None = None,
     authority_id: str | None = None,
     company_gmr_id: str | None = None,
@@ -154,12 +155,19 @@ def upsert_contract(
 ) -> dict[str, Any]:
     """Build an UpsertContract payload (v1).
 
+    ``ted_notice_id`` is the eForms internal UUID (the cbc:ID root
+    identifier). ``ted_publication_number`` is the human-readable
+    ``<seq>-<year>`` identifier TED assigns at publish time and which
+    TED's public detail URL is keyed by — capturing it at ETL time
+    lets readers skip the runtime UUID→pub-num search call.
+
     ``country`` is the alpha-3 country of the contracting authority (the
     acquirer). Cascaded onto the Contract at write time so jurisdictional
     panels can group contracts without traversing to Authority.
     """
     out: dict[str, Any] = {"ted_notice_id": ted_notice_id}
     for k, v in (
+        ("ted_publication_number", ted_publication_number),
         ("title", title), ("authority_id", authority_id),
         ("company_gmr_id", company_gmr_id),
         ("publication_date", publication_date),
