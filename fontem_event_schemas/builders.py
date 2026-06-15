@@ -137,7 +137,7 @@ def upsert_authority(
     return out
 
 
-def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     *,
     ted_notice_id: str,
     ted_publication_number: str | None = None,
