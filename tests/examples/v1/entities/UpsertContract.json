@@ -11,5 +11,13 @@
   "cpv": "45000000",
   "nuts": "FR101",
   "language": "fr",
-  "country": "FRA"
+  "country": "FRA",
+  "estimated_value_eur": 12000000.0,
+  "value_payable_eur": 12500000.0,
+  "value_confidence": 1.0,
+  "value_confidence_consistency": 1.0,
+  "value_confidence_plausibility": 1.0,
+  "value_quality_flag": "ok",
+  "value_low_confidence": false,
+  "value_payable_discrepancy": false
 }

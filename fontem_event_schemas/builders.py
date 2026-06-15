@@ -137,7 +137,7 @@ def upsert_authority(
     return out
 
 
-def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     *,
     ted_notice_id: str,
     ted_publication_number: str | None = None,
@@ -148,6 +148,14 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     value_eur: float | None = None,
     value_currency: str | None = None,
     value_original: float | None = None,
+    estimated_value_eur: float | None = None,
+    value_payable_eur: float | None = None,
+    value_confidence: float | None = None,
+    value_confidence_consistency: float | None = None,
+    value_confidence_plausibility: float | None = None,
+    value_quality_flag: str | None = None,
+    value_low_confidence: bool | None = None,
+    value_payable_discrepancy: bool | None = None,
     cpv: str | None = None,
     nuts: str | None = None,
     language: str | None = None,
@@ -164,6 +172,20 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     ``country`` is the alpha-3 country of the contracting authority (the
     acquirer). Cascaded onto the Contract at write time so jurisdictional
     panels can group contracts without traversing to Authority.
+
+    Value-quality fields (all derived by ``contract_confidence``):
+    ``value_eur`` is the awarded value the loader chose to trust (the
+    eForms ``TotalAmount``, falling back to ``PayableAmount``).
+    ``estimated_value_eur`` and ``value_payable_eur`` are the two
+    cross-check signals kept alongside it. ``value_confidence`` in
+    ``[0, 1]`` is consistency × plausibility; ``value_low_confidence`` is
+    the boolean gate consumers use to exclude a contract from default
+    aggregates. ``value_quality_flag`` explains why (ok /
+    value_disagreement / implausible_magnitude / concession_negative /
+    zero_value / no_awarded_value / unverified_single_signal).
+    ``value_payable_discrepancy`` marks a notice whose payable disagrees
+    with the stored total (an internal source inconsistency) even when the
+    contract is otherwise kept.
     """
     out: dict[str, Any] = {"ted_notice_id": ted_notice_id}
     for k, v in (
@@ -173,6 +195,14 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("publication_date", publication_date),
         ("value_eur", value_eur), ("value_currency", value_currency),
         ("value_original", value_original),
+        ("estimated_value_eur", estimated_value_eur),
+        ("value_payable_eur", value_payable_eur),
+        ("value_confidence", value_confidence),
+        ("value_confidence_consistency", value_confidence_consistency),
+        ("value_confidence_plausibility", value_confidence_plausibility),
+        ("value_quality_flag", value_quality_flag),
+        ("value_low_confidence", value_low_confidence),
+        ("value_payable_discrepancy", value_payable_discrepancy),
         ("cpv", cpv), ("nuts", nuts), ("language", language),
         ("country", country),
     ):
