@@ -160,6 +160,13 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     nuts: str | None = None,
     language: str | None = None,
     country: str | None = None,
+    procedure_type: str | None = None,
+    tenders_received: int | None = None,
+    award_criterion_type: str | None = None,
+    submission_deadline: str | None = None,
+    is_framework: bool | None = None,
+    eu_funded: bool | None = None,
+    funding_programme: str | None = None,
 ) -> dict[str, Any]:
     """Build an UpsertContract payload (v1).
 
@@ -205,6 +212,13 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("value_payable_discrepancy", value_payable_discrepancy),
         ("cpv", cpv), ("nuts", nuts), ("language", language),
         ("country", country),
+        ("procedure_type", procedure_type),
+        ("tenders_received", tenders_received),
+        ("award_criterion_type", award_criterion_type),
+        ("submission_deadline", submission_deadline),
+        ("is_framework", is_framework),
+        ("eu_funded", eu_funded),
+        ("funding_programme", funding_programme),
     ):
         if v is not None and v != "":
             out[k] = v

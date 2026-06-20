@@ -62,3 +62,25 @@ def test_upsert_contract_omits_unset_value_quality_fields():
     ):
         assert k not in p
     validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_threads_integrity_fields():
+    """Tender-integrity fields land on the payload and it validates."""
+    p = builders.upsert_contract(
+        ted_notice_id="integrity-1",
+        procedure_type="open",
+        tenders_received=1,
+        award_criterion_type="price",
+        submission_deadline="2026-03-01",
+        is_framework=False,
+        eu_funded=True,
+        funding_programme="RRF",
+    )
+    assert p["procedure_type"] == "open"
+    assert p["tenders_received"] == 1            # single-bidder signal
+    assert p["award_criterion_type"] == "price"
+    assert p["submission_deadline"] == "2026-03-01"
+    assert p["is_framework"] is False            # meaningful False preserved
+    assert p["eu_funded"] is True
+    assert p["funding_programme"] == "RRF"
+    validate("UpsertContract", 1, p)             # raises on failure

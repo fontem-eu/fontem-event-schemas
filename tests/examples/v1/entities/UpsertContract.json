@@ -19,5 +19,12 @@
   "value_confidence_plausibility": 1.0,
   "value_quality_flag": "ok",
   "value_low_confidence": false,
-  "value_payable_discrepancy": false
+  "value_payable_discrepancy": false,
+  "procedure_type": "open",
+  "tenders_received": 1,
+  "award_criterion_type": "price",
+  "submission_deadline": "2026-02-15",
+  "is_framework": false,
+  "eu_funded": true,
+  "funding_programme": "RRF"
 }

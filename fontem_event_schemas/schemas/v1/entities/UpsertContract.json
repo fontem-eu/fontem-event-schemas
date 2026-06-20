@@ -26,7 +26,14 @@
     "cpv":             { "type": ["string", "null"], "description": "Primary CPV code." },
     "nuts":            { "type": ["string", "null"], "description": "Place-of-performance NUTS code." },
     "language":        { "type": ["string", "null"], "description": "Notice language code." },
-    "country":         { "type": ["string", "null"], "description": "ISO 3166-1 alpha-3 country code of the contracting authority (the acquirer). Cascaded onto the Contract at write time because TED contracts are jurisdictionally grouped by the procuring entity, not the awarded vendor." }
+    "country":         { "type": ["string", "null"], "description": "ISO 3166-1 alpha-3 country code of the contracting authority (the acquirer). Cascaded onto the Contract at write time because TED contracts are jurisdictionally grouped by the procuring entity, not the awarded vendor." },
+    "procedure_type":  { "type": ["string", "null"], "description": "eForms procurement-procedure-type code (e.g. open, restricted, neg-w-call, neg-wo-call). Drives the non-open / no-call-for-bids red flags." },
+    "tenders_received":{ "type": ["integer", "null"], "minimum": 0, "description": "Number of tenders received for the award's lot. A value of 1 is the single-bidder red flag (the headline EC Single Market Scoreboard indicator)." },
+    "award_criterion_type": { "type": ["string", "null"], "enum": ["price", "meat", null], "description": "price = lowest-price-only award; meat = most-economically-advantageous-tender (any quality/cost criterion). Price-only is a CRI red flag." },
+    "submission_deadline": { "type": ["string", "null"], "format": "date", "description": "Tender submission cut-off date — with publication_date, yields the submission-period / decision-speed indicators." },
+    "is_framework":    { "type": ["boolean", "null"], "description": "True when the notice sets up a framework agreement (excluded from some single-bidder denominators)." },
+    "eu_funded":       { "type": ["boolean", "null"], "description": "True when the notice declares EU co-financing (cohesion / RRF etc.). Null when no funding block is present (unknown, not 'definitely not')." },
+    "funding_programme": { "type": ["string", "null"], "description": "Declared EU funding programme code when eu_funded." }
   },
   "additionalProperties": false
 }
