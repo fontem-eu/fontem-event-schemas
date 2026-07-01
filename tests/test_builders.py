@@ -84,3 +84,27 @@ def test_upsert_contract_threads_integrity_fields():
     assert p["eu_funded"] is True
     assert p["funding_programme"] == "RRF"
     validate("UpsertContract", 1, p)             # raises on failure
+
+
+def test_upsert_contract_threads_modification_before_values():
+    """The pre-modification before-values thread through and validate —
+    the corruption-signal delta pairs value_before_* with value_*
+    (here the €1,092 -> €2,184 doubling from a real legacy F20)."""
+    p = builders.upsert_contract(
+        ted_notice_id="24082-2024",
+        value_eur=2184.6,
+        value_currency="EUR",
+        value_original=2184.6,
+        value_before_eur=1092.3,
+        value_before_original=1092.3,
+    )
+    assert p["value_before_eur"] == 1092.3
+    assert p["value_before_original"] == 1092.3
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_omits_unset_before_values():
+    """Non-modification contracts carry no before-values."""
+    p = builders.upsert_contract(ted_notice_id="minimal")
+    assert "value_before_eur" not in p
+    assert "value_before_original" not in p
