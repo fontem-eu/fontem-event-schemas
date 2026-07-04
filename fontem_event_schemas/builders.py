@@ -89,6 +89,30 @@ def upsert_company(
     return out
 
 
+def upsert_investment_fund(
+    *,
+    gmr_id: str,
+    name: str | None = None,
+    country: str | None = None,
+    lei: str | None = None,
+    active: bool | None = None,
+    legal_form: str | None = None,
+    fund_type: str | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertInvestmentFund payload (v1). Same gmr_id
+    derivation as companies so an entity that first landed as a
+    Company keeps its identity; sinks relabel the node."""
+    out: dict[str, Any] = {"gmr_id": gmr_id}
+    for k, v in (
+        ("name", name), ("country", country), ("lei", lei),
+        ("active", active), ("legal_form", legal_form),
+        ("fund_type", fund_type),
+    ):
+        if v is not None and v != "":
+            out[k] = v
+    return out
+
+
 def upsert_listing(
     *,
     ticker: str,
@@ -98,6 +122,7 @@ def upsert_listing(
     active: bool | None = None,
     isin: str | None = None,
     mic: str | None = None,
+    security_type: str | None = None,
 ) -> dict[str, Any]:
     """Build an UpsertListing payload (v1)."""
     out: dict[str, Any] = {
@@ -106,6 +131,7 @@ def upsert_listing(
     for k, v in (
         ("exchange", exchange), ("currency", currency),
         ("active", active), ("isin", isin), ("mic", mic),
+        ("security_type", security_type),
     ):
         if v is not None and v != "":
             out[k] = v

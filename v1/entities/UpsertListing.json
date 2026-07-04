@@ -12,7 +12,8 @@
     "currency":       { "type": ["string", "null"], "description": "Trading currency (ISO 4217)." },
     "active":         { "type": ["boolean", "null"] },
     "isin":           { "type": ["string", "null"], "minLength": 12, "maxLength": 12 },
-    "mic":            { "type": ["string", "null"], "minLength": 4, "maxLength": 4, "description": "Market Identifier Code (ISO 10383)." }
+    "mic":            { "type": ["string", "null"], "minLength": 4, "maxLength": 4, "description": "Market Identifier Code (ISO 10383)." },
+    "security_type":  { "type": ["string", "null"], "description": "OpenFIGI securityType of the instrument ('Common Stock', 'REIT', 'ADR', 'Open-End Fund', ...). Lets consumers distinguish company equity from fund units without re-querying OpenFIGI." }
   },
   "additionalProperties": false
 }

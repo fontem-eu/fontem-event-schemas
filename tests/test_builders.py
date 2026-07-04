@@ -108,3 +108,51 @@ def test_upsert_contract_omits_unset_before_values():
     p = builders.upsert_contract(ted_notice_id="minimal")
     assert "value_before_eur" not in p
     assert "value_before_original" not in p
+
+
+def test_upsert_investment_fund_validates_and_omits_unset():
+    from fontem_event_schemas import validate
+    from fontem_event_schemas.builders import upsert_investment_fund
+    payload = upsert_investment_fund(
+        gmr_id="0b6cbfa6-6a30-5efc-9b4f-3e56d0f3f5a2",
+        name="EXAMPLE UCITS FUND",
+        lei="2138008K5B3Z4E8DHN12",
+        fund_type="Open-End Fund",
+    )
+    assert "country" not in payload      # unset fields stay absent
+    assert payload["fund_type"] == "Open-End Fund"
+    validate("UpsertInvestmentFund", 1, payload)   # raises on failure
+
+
+def test_upsert_listing_threads_security_type():
+    from fontem_event_schemas import validate
+    from fontem_event_schemas.builders import upsert_listing
+    payload = upsert_listing(
+        ticker="EGL", company_gmr_id="0b6cbfa6-6a30-5efc-9b4f-3e56d0f3f5a2",
+        exchange="PL", security_type="Common Stock",
+    )
+    assert payload["security_type"] == "Common Stock"
+    validate("UpsertListing", 1, payload)
+
+
+def test_upsert_listing_omits_unset_security_type():
+    from fontem_event_schemas.builders import upsert_listing
+    payload = upsert_listing(
+        ticker="EGL", company_gmr_id="0b6cbfa6-6a30-5efc-9b4f-3e56d0f3f5a2",
+    )
+    assert "security_type" not in payload
+
+
+def test_fund_security_type_taxonomy():
+    from fontem_event_schemas.securities import (
+        COMPANY_SECURITY_TYPES2,
+        FUND_SECURITY_TYPES2,
+        is_fund_security_type,
+    )
+    assert "Common Stock" in COMPANY_SECURITY_TYPES2
+    assert "Mutual Fund" in FUND_SECURITY_TYPES2
+    assert not COMPANY_SECURITY_TYPES2 & FUND_SECURITY_TYPES2
+    assert is_fund_security_type("Open-End Fund")
+    assert is_fund_security_type("ETP")
+    assert not is_fund_security_type("Common Stock")
+    assert not is_fund_security_type(None)
