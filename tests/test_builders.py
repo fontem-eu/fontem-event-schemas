@@ -156,3 +156,19 @@ def test_fund_security_type_taxonomy():
     assert is_fund_security_type("ETP")
     assert not is_fund_security_type("Common Stock")
     assert not is_fund_security_type(None)
+
+
+def test_upsert_contract_threads_quarantine_fields():
+    from fontem_event_schemas import validate
+    from fontem_event_schemas.builders import upsert_contract
+    payload = upsert_contract(
+        ted_notice_id="n-1",
+        value_quarantined=True,
+        value_quarantine_reason="implausible_magnitude",
+    )
+    assert payload["value_quarantined"] is True
+    assert payload["value_quarantine_reason"] == "implausible_magnitude"
+    validate("UpsertContract", 1, payload)
+    # unset stays absent — a normal contract carries neither key
+    clean = upsert_contract(ted_notice_id="n-2")
+    assert "value_quarantined" not in clean
