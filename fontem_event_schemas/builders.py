@@ -7,7 +7,7 @@ corresponding JSON Schema.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 
 def upsert_sanctioned_entity(
@@ -65,6 +65,18 @@ def upsert_filing(
     return out
 
 
+# GLEIF identity block (LEI-CDF v3.1) — carried on `identity`. Stored
+# verbatim from the source, never inferred; a source that says nothing
+# about a field simply omits it. `aliases` is a list; every other key is
+# a scalar mapped straight onto the schema.
+COMPANY_IDENTITY_FIELDS = (
+    "entity_kind", "registered_as", "registered_at", "jurisdiction",
+    "registration_status", "entity_creation_date", "address", "city",
+    "region", "hq_address", "hq_city", "hq_region", "hq_country",
+    "hq_postal_code", "aliases",
+)
+
+
 def upsert_company(
     *,
     gmr_id: str,
@@ -76,8 +88,15 @@ def upsert_company(
     active: bool | None = None,
     legal_form: str | None = None,
     postal_code: str | None = None,
+    identity: "Mapping[str, Any] | None" = None,
 ) -> dict[str, Any]:
-    """Build an UpsertCompany payload (v1)."""
+    """Build an UpsertCompany payload (v1).
+
+    `identity` bundles the optional GLEIF identity block — see
+    ``COMPANY_IDENTITY_FIELDS``. Keys map straight onto the schema;
+    None/"" values drop out and `aliases` is emitted only when non-empty.
+    Unknown keys are forwarded and fail schema validation loudly rather
+    than being silently swallowed."""
     out: dict[str, Any] = {"gmr_id": gmr_id}
     for k, v in (
         ("name", name), ("country", country), ("lei", lei),
@@ -85,6 +104,12 @@ def upsert_company(
         ("legal_form", legal_form), ("postal_code", postal_code),
     ):
         if v is not None and v != "":
+            out[k] = v
+    for k, v in (identity or {}).items():
+        if k == "aliases":
+            if v:
+                out["aliases"] = list(v)
+        elif v is not None and v != "":
             out[k] = v
     return out
 
@@ -186,6 +211,9 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     value_payable_discrepancy: bool | None = None,
     value_quarantined: bool | None = None,
     value_quarantine_reason: str | None = None,
+    match_tier: str | None = None,
+    match_confidence: float | None = None,
+    match_layer: int | None = None,
     cpv: str | None = None,
     nuts: str | None = None,
     language: str | None = None,
@@ -244,6 +272,9 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("value_payable_discrepancy", value_payable_discrepancy),
         ("value_quarantined", value_quarantined),
         ("value_quarantine_reason", value_quarantine_reason),
+        ("match_tier", match_tier),
+        ("match_confidence", match_confidence),
+        ("match_layer", match_layer),
         ("cpv", cpv), ("nuts", nuts), ("language", language),
         ("country", country),
         ("procedure_type", procedure_type),

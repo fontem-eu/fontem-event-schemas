@@ -172,3 +172,51 @@ def test_upsert_contract_threads_quarantine_fields():
     # unset stays absent — a normal contract carries neither key
     clean = upsert_contract(ted_notice_id="n-2")
     assert "value_quarantined" not in clean
+
+
+def test_upsert_company_threads_gleif_identity_block():
+    """Real GLEIF values (Carlsberg A/S, LEI 5299001O0WJQYB5GYZ19) —
+    the identity block is stored verbatim; unset fields stay absent."""
+    from fontem_event_schemas import validate
+    from fontem_event_schemas.builders import upsert_company
+    p = upsert_company(
+        gmr_id="00000000-0000-5000-8000-000000000001",
+        name="CARLSBERG A/S", country="DNK",
+        lei="5299001O0WJQYB5GYZ19", postal_code="1799",
+        identity={
+            "entity_kind": "GENERAL",
+            "registered_as": "61056416", "registered_at": "RA000170",
+            "jurisdiction": "DK", "registration_status": "ISSUED",
+            "entity_creation_date": "1999-10-16",
+            "address": "J.C. Jacobsens Gade 1", "city": "København V",
+            "region": "DK-84",
+            "aliases": ["Carlsberg Group"],
+        },
+    )
+    assert p["entity_kind"] == "GENERAL"
+    assert p["registered_as"] == "61056416"
+    assert p["registered_at"] == "RA000170"
+    assert p["aliases"] == ["Carlsberg Group"]
+    validate("UpsertCompany", 1, p)
+    # an EDGAR/other-source company that says nothing about kind carries
+    # NO entity_kind key — silence, not a guess.
+    silent = upsert_company(gmr_id="00000000-0000-5000-8000-000000000002",
+                            name="Some LLC", cik="0000320193")
+    assert "entity_kind" not in silent
+    assert "aliases" not in silent
+    validate("UpsertCompany", 1, silent)
+
+
+def test_upsert_contract_threads_match_provenance():
+    from fontem_event_schemas import validate
+    from fontem_event_schemas.builders import upsert_contract
+    exact = upsert_contract(ted_notice_id="n-1", company_gmr_id="g1",
+                            match_tier="lei", match_confidence=1.0,
+                            match_layer=2)
+    assert exact["match_tier"] == "lei"
+    assert exact["match_confidence"] == 1.0
+    validate("UpsertContract", 1, exact)
+    # a contract with no resolved company carries no provenance
+    bare = upsert_contract(ted_notice_id="n-2")
+    assert "match_tier" not in bare
+    validate("UpsertContract", 1, bare)
