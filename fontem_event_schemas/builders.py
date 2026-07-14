@@ -431,3 +431,54 @@ def end_graph_replace(
     if domain:
         out["domain"] = domain
     return out
+
+
+def upsert_petition(  # pylint: disable=too-many-arguments,too-many-locals
+    *,
+    system: str,
+    petition_id: str,
+    title: str | None = None,
+    status: str | None = None,
+    objectives: str | None = None,
+    registration_date: str | None = None,
+    collection_start_date: str | None = None,
+    collection_deadline: str | None = None,
+    closed_date: str | None = None,
+    submitted_date: str | None = None,
+    answered_date: str | None = None,
+    total_supporters: int | None = None,
+    support_link: str | None = None,
+    organizer_names: list[str] | None = None,
+    organizer_roles: list[str] | None = None,
+    organizer_countries: list[str] | None = None,
+    funding_total_eur: float | None = None,
+    funding_sponsor_count: int | None = None,
+    registration_decision_celex: str | None = None,
+    answer_refs: list[str] | None = None,
+    latest_update: str | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertPetition payload (v1)."""
+    out: dict[str, Any] = {
+        "system": system,
+        "petition_id": petition_id,
+    }
+    for k, v in (
+        ("title", title), ("status", status), ("objectives", objectives),
+        ("registration_date", registration_date),
+        ("collection_start_date", collection_start_date),
+        ("collection_deadline", collection_deadline),
+        ("closed_date", closed_date), ("submitted_date", submitted_date),
+        ("answered_date", answered_date),
+        ("total_supporters", total_supporters),
+        ("support_link", support_link),
+        ("organizer_names", organizer_names),
+        ("organizer_roles", organizer_roles),
+        ("organizer_countries", organizer_countries),
+        ("funding_total_eur", funding_total_eur),
+        ("funding_sponsor_count", funding_sponsor_count),
+        ("registration_decision_celex", registration_decision_celex),
+        ("answer_refs", answer_refs), ("latest_update", latest_update),
+    ):
+        if v is not None:
+            out[k] = v
+    return out
