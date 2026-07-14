@@ -21,6 +21,7 @@ def upsert_sanctioned_entity(
     sanction_regime: str | None = None,
     legal_basis: str | None = None,
     listing_reason: str | None = None,
+    subject_type: str | None = None,
 ) -> dict[str, Any]:
     """Build an UpsertSanctionedEntity payload (v1)."""
     out: dict[str, Any] = {
@@ -34,6 +35,7 @@ def upsert_sanctioned_entity(
         ("sanction_regime", sanction_regime),
         ("legal_basis", legal_basis),
         ("listing_reason", listing_reason),
+        ("subject_type", subject_type),
     ):
         if v is not None and v != "":
             out[k] = v
