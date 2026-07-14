@@ -244,3 +244,21 @@ def test_upsert_sanctioned_entity_threads_subject_type():
     silent = upsert_sanctioned_entity(entity_id="s-1", eu_reference="EU.3.3")
     assert "subject_type" not in silent
     _validate("UpsertSanctionedEntity", 1, silent)
+
+def test_upsert_petition_validates_and_omits_unset():
+    from fontem_event_schemas.builders import upsert_petition
+    from fontem_event_schemas.validate import validate as _validate
+
+    full = upsert_petition(
+        system="eu-eci", petition_id="ECI(2024)000007",
+        title="Stop Destroying Videogames", status="ANSWERED",
+        registration_date="2024-06-19", total_supporters=1294188,
+        organizer_names=["Daniel ONDRUSKA"], organizer_roles=["REPRESENTATIVE"],
+        registration_decision_celex="32024D1824", answer_refs=["C(2026)4110"],
+    )
+    assert full["total_supporters"] == 1294188
+    _validate("UpsertPetition", 1, full)
+
+    bare = upsert_petition(system="eu-eci", petition_id="ECI(2026)000001")
+    assert "title" not in bare
+    _validate("UpsertPetition", 1, bare)
