@@ -220,3 +220,27 @@ def test_upsert_contract_threads_match_provenance():
     bare = upsert_contract(ted_notice_id="n-2")
     assert "match_tier" not in bare
     validate("UpsertContract", 1, bare)
+
+
+def test_upsert_sanctioned_entity_threads_subject_type():
+    from fontem_event_schemas.builders import upsert_sanctioned_entity
+    from fontem_event_schemas.validate import validate as _validate
+
+    person = upsert_sanctioned_entity(
+        entity_id="p-1", eu_reference="EU.1.1", name="Jane Doe",
+        subject_type="person", nationality="RUS",
+    )
+    assert person["subject_type"] == "person"
+    _validate("UpsertSanctionedEntity", 1, person)
+
+    entity = upsert_sanctioned_entity(
+        entity_id="e-1", eu_reference="EU.2.2", name="ACME OAO",
+        subject_type="entity",
+    )
+    _validate("UpsertSanctionedEntity", 1, entity)
+
+    # pre-2026-07-14 producers say nothing about subject type — silence,
+    # not a guess, and still valid.
+    silent = upsert_sanctioned_entity(entity_id="s-1", eu_reference="EU.3.3")
+    assert "subject_type" not in silent
+    _validate("UpsertSanctionedEntity", 1, silent)
