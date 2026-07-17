@@ -190,6 +190,46 @@ def upsert_authority(
     return out
 
 
+def contract_party(
+    *,
+    company_gmr_id: str,
+    name: str,
+    role: str,
+    rank: int | None = None,
+    is_consortium_member: bool = False,
+    tendering_party_id: str | None = None,
+    match_tier: str | None = None,
+    match_confidence: float | None = None,
+    match_layer: int | None = None,
+) -> dict[str, Any]:
+    """Build one item of UpsertContract ``parties`` (v1).
+
+    ``role`` is 'winner' (referenced by a selec-w LotResult, or legacy
+    CONTRACTOR/ECONOMIC_OPERATOR) or 'named_tenderer' (named in the
+    notice but not in a winning result — rare, eForms only).
+    ``is_consortium_member`` marks a supplier that shares one undivided
+    tender value with its co-members (grouped by ``tendering_party_id``);
+    the schema default is false, so it is emitted only when True.
+    ``match_*`` carry the consolidator resolution metadata, same
+    semantics as the top-level fields on the contract itself.
+    """
+    out: dict[str, Any] = {
+        "company_gmr_id": company_gmr_id, "name": name, "role": role,
+    }
+    if is_consortium_member:
+        out["is_consortium_member"] = True
+    for k, v in (
+        ("rank", rank),
+        ("tendering_party_id", tendering_party_id),
+        ("match_tier", match_tier),
+        ("match_confidence", match_confidence),
+        ("match_layer", match_layer),
+    ):
+        if v is not None and v != "":
+            out[k] = v
+    return out
+
+
 def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     *,
     ted_notice_id: str,
@@ -227,6 +267,14 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     is_framework: bool | None = None,
     eu_funded: bool | None = None,
     funding_programme: str | None = None,
+    procedure_id: str | None = None,
+    notice_type: str | None = None,
+    notice_kind: str | None = None,
+    modifies_publication_number: str | None = None,
+    current_value: float | None = None,
+    is_current: bool | None = None,
+    contract_key: str | None = None,
+    parties: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build an UpsertContract payload (v1).
 
@@ -253,6 +301,19 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     ``value_payable_discrepancy`` marks a notice whose payable disagrees
     with the stored total (an internal source inconsistency) even when the
     contract is otherwise kept.
+
+    Modification-collapse fields: ``notice_kind`` ('award' |
+    'modification') is the normalised classification of the notice;
+    ``procedure_id`` and ``modifies_publication_number`` carry the
+    linkage a modification uses to find its award; ``notice_type`` is
+    the raw eForms notice-type; ``contract_key`` / ``current_value`` /
+    ``is_current`` are the collapse_modifications outputs that make
+    value aggregates count each underlying contract once.
+
+    ``parties`` is the full list of named suppliers on the notice —
+    build items with ``contract_party`` so unset fields drop out. The
+    top-level ``company_gmr_id`` + ``match_*`` fields are kept as the
+    primary winner for backward compatibility.
     """
     out: dict[str, Any] = {"ted_notice_id": ted_notice_id}
     for k, v in (
@@ -286,6 +347,14 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("is_framework", is_framework),
         ("eu_funded", eu_funded),
         ("funding_programme", funding_programme),
+        ("procedure_id", procedure_id),
+        ("notice_type", notice_type),
+        ("notice_kind", notice_kind),
+        ("modifies_publication_number", modifies_publication_number),
+        ("current_value", current_value),
+        ("is_current", is_current),
+        ("contract_key", contract_key),
+        ("parties", parties),
     ):
         if v is not None and v != "":
             out[k] = v

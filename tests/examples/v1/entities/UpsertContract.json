@@ -26,5 +26,35 @@
   "submission_deadline": "2026-02-15",
   "is_framework": false,
   "eu_funded": true,
-  "funding_programme": "RRF"
+  "funding_programme": "RRF",
+  "procedure_id": "c0ffee00-1ace-413d-aa61-cd21cd6b95e7",
+  "notice_type": "can-standard",
+  "notice_kind": "award",
+  "contract_key": "c0ffee00-1ace-413d-aa61-cd21cd6b95e7",
+  "current_value": 12500000.0,
+  "is_current": true,
+  "parties": [
+    {
+      "company_gmr_id": "00040372-dad6-5d34-882c-8b8624b4e734",
+      "name": "VINCI CONSTRUCTION GRANDS PROJETS",
+      "role": "winner",
+      "rank": 1,
+      "is_consortium_member": true,
+      "tendering_party_id": "TPA-0001",
+      "match_tier": "lei",
+      "match_confidence": 1.0,
+      "match_layer": 2
+    },
+    {
+      "company_gmr_id": "11111111-2222-5333-8444-666666666666",
+      "name": "EIFFAGE GENIE CIVIL",
+      "role": "winner",
+      "rank": 1,
+      "is_consortium_member": true,
+      "tendering_party_id": "TPA-0001",
+      "match_tier": "name_country",
+      "match_confidence": 0.95,
+      "match_layer": 2
+    }
+  ]
 }
