@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.fontem.eu/v1/entities/UpsertContract.json",
   "title": "UpsertContract",
-  "description": "A public procurement contract — primarily TED (EU Tenders Electronic Daily) award notices. Linked to its contracting Authority via authority_id and to the awarded Company (vendor) via company_gmr_id. Sinks materialise AWARDED (Authority→Contract) and AWARDED_TO (Contract→Company) edges from those keys.",
+  "description": "A public procurement contract — primarily TED (EU Tenders Electronic Daily) award notices. Linked to its contracting Authority via authority_id and to the awarded Company (vendor) via company_gmr_id. Sinks materialise AWARDED (Authority→Contract) and AWARDED_TO (Contract→Company) edges from those keys. One event per notice; contract-modification (can-modif) notices are separate events linked to their award via procedure_id / contract_key.",
   "type": "object",
   "required": ["ted_notice_id"],
   "properties": {
@@ -10,11 +10,13 @@
     "ted_publication_number": { "type": ["string", "null"], "description": "TED publication-number assigned at publish time (e.g. '295342-2026'). The ETL resolves this via TED's v3 search API so downstream readers can build the canonical detail URL (https://ted.europa.eu/en/notice/-/detail/<publication-number>) directly. Null when the notice is queued but not yet published, or when the search API had no match at ETL time — readers fall back to the runtime lookup endpoint in that case." },
     "title":           { "type": ["string", "null"] },
     "authority_id":    { "type": ["string", "null"], "format": "uuid", "description": "Contracting authority's authority_id." },
-    "company_gmr_id":  { "type": ["string", "null"], "format": "uuid", "description": "Awarded company's gmr_id." },
+    "company_gmr_id":  { "type": ["string", "null"], "format": "uuid", "description": "Awarded company's gmr_id (the primary winner). Kept for backward compatibility; multi-supplier notices carry the full set in `parties`." },
     "publication_date":{ "type": ["string", "null"], "format": "date" },
     "value_eur":       { "type": ["number", "null"], "description": "Awarded contract value in EUR (converted at publication date). This is the value the loader chose to trust — the eForms NoticeResult TotalAmount, falling back to the per-award PayableAmount — not necessarily either raw field verbatim." },
     "value_currency":  { "type": ["string", "null"], "description": "Original ISO 4217 currency before EUR conversion." },
     "value_original":  { "type": ["number", "null"], "description": "Chosen awarded value in the original currency." },
+    "value_before_eur": { "type": ["number", "null"], "description": "On a modification (can-modif), the pre-modification contract total in EUR, converted at the same publication-date rate as value_eur so the before->after delta isolates the value change from FX drift. Populated from legacy TED F20 notices, which self-contain both totals; eForms modifications carry the before via the MODIFIES link to the original." },
+    "value_before_original": { "type": ["number", "null"], "description": "The pre-modification total (VAL_TOTAL_BEFORE) in the original currency; paired with value_original (the after total)." },
     "estimated_value_eur": { "type": ["number", "null"], "description": "The lot/notice EstimatedOverallContractAmount in EUR — the independently-entered budget estimate, kept as the primary cross-check for the value confidence score." },
     "value_payable_eur": { "type": ["number", "null"], "description": "The per-award PayableAmount in EUR — kept as a secondary cross-check. Frequently equals value_eur, but diverges when the source corrupts one field (see value_payable_discrepancy)." },
     "value_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Confidence in value_eur, in [0,1]: consistency (agreement of the chosen value with the estimate and payable) × plausibility (soft absolute magnitude bound). Derived by contract_confidence.score_contract_value." },
@@ -31,7 +33,41 @@
     "cpv":             { "type": ["string", "null"], "description": "Primary CPV code." },
     "nuts":            { "type": ["string", "null"], "description": "Place-of-performance NUTS code." },
     "language":        { "type": ["string", "null"], "description": "Notice language code." },
-    "country":         { "type": ["string", "null"], "description": "ISO 3166-1 alpha-3 country code of the contracting authority (the acquirer). Cascaded onto the Contract at write time because TED contracts are jurisdictionally grouped by the procuring entity, not the awarded vendor." }
+    "country":         { "type": ["string", "null"], "description": "ISO 3166-1 alpha-3 country code of the contracting authority (the acquirer). Cascaded onto the Contract at write time because TED contracts are jurisdictionally grouped by the procuring entity, not the awarded vendor." },
+    "procedure_type":  { "type": ["string", "null"], "description": "eForms procurement-procedure-type code (e.g. open, restricted, neg-w-call, neg-wo-call). Drives the non-open / no-call-for-bids red flags." },
+    "procedure_id":    { "type": ["string", "null"], "description": "eForms procedure-identifier (UUID). Shared by an award notice and its contract-modification (can-modif) notices; link_ted_modifications joins on it to build MODIFIES edges. Stamped by the TED incremental search-API loader." },
+    "notice_type":     { "type": ["string", "null"], "description": "eForms notice-type (e.g. can-standard, can-modif). 'can-modif' marks a contract-modification notice." },
+    "modifies_publication_number": { "type": ["string", "null"], "description": "On a modification (can-modif), the original award's publication-number (or notice identifier) it modifies. Provenance for the MODIFIES link; the join itself uses procedure_id." },
+    "tenders_received": { "type": ["integer", "null"], "minimum": 0, "description": "Number of tenders received for the award's lot. A value of 1 is the single-bidder red flag (the headline EC Single Market Scoreboard indicator)." },
+    "award_criterion_type": { "type": ["string", "null"], "enum": ["price", "meat", null], "description": "price = lowest-price-only award; meat = most-economically-advantageous-tender (any quality/cost criterion). Price-only is a CRI red flag." },
+    "submission_deadline": { "type": ["string", "null"], "format": "date", "description": "Tender submission cut-off date — with publication_date, yields the submission-period / decision-speed indicators." },
+    "is_framework":    { "type": ["boolean", "null"], "description": "True when the notice sets up a framework agreement (excluded from some single-bidder denominators)." },
+    "eu_funded":       { "type": ["boolean", "null"], "description": "True when the notice declares EU co-financing (cohesion / RRF etc.). Null when no funding block is present (unknown, not 'definitely not')." },
+    "funding_programme": { "type": ["string", "null"], "description": "Declared EU funding programme code when eu_funded." },
+    "current_value":   { "type": ["number", "null"], "description": "Collapsed value of the underlying contract in EUR: the latest restated value across the original award and its contract-modification (can-modif) notices, or the award value when never modified. Materialised by the collapse_modifications ETL pass. Value aggregates sum this over is_current nodes so each contract counts once." },
+    "is_current":      { "type": ["boolean", "null"], "description": "True on the single canonical :Contract node per underlying contract (the award, or the latest modification when the award was never ingested). Value/count aggregates include is_current nodes only; superseded modification restatements are false. Absent on never-modified nodes, which readers default to canonical." },
+    "contract_key":    { "type": ["string", "null"], "description": "Stable identity the collapse_modifications pass grouped a contract's award + modification notices under (procedure_id, else the modified/own publication reference)." },
+    "notice_kind":     { "type": ["string", "null"], "enum": ["award", "modification", null], "description": "Coarse classification of the notice: 'award' for a contract-award notice, 'modification' for a contract-modification notice (eForms can-modif or legacy F20). Normalised across source formats so consumers need not re-derive it from notice_type." },
+    "parties": {
+      "type": ["array", "null"],
+      "description": "The named suppliers of this notice, resolved by the producer. Supersets the top-level company_gmr_id (the primary winner), which is kept for backward compatibility. Consumers must NOT sum tender values across members of the same tendering party — consortium members share one undivided value.",
+      "items": {
+        "type": "object",
+        "required": ["company_gmr_id", "name", "role"],
+        "properties": {
+          "company_gmr_id": { "type": "string", "format": "uuid", "description": "Resolved (or newly created) company gmr_id for this supplier." },
+          "name":           { "type": "string", "minLength": 1, "description": "Supplier name as published on the notice." },
+          "role":           { "type": "string", "enum": ["winner", "named_tenderer"], "description": "winner = referenced by a selec-w LotResult (or legacy CONTRACTOR/ECONOMIC_OPERATOR); named_tenderer = named in the notice but not in a winning result (rare, eForms only)." },
+          "rank":           { "type": ["integer", "null"], "description": "cbc:RankCode when present (multi-supplier frameworks / cascades)." },
+          "is_consortium_member": { "type": "boolean", "default": false, "description": "True when this supplier shares one undivided tender value with its co-members; consumers must NOT sum values across members of the same tendering party." },
+          "tendering_party_id": { "type": ["string", "null"], "description": "Groups consortium members: parties with the same tendering_party_id tendered (and won) together." },
+          "match_tier":       { "type": ["string", "null"], "description": "How this party's company_gmr_id was resolved: lei | vat | cik (exact ID) vs name_country | fuzzy (name-based). Same semantics as the top-level match_tier." },
+          "match_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "Resolver confidence for this party's company match. Same semantics as the top-level match_confidence." },
+          "match_layer":      { "type": ["integer", "null"], "description": "TedMatcher layer that produced this party's match. Same semantics as the top-level match_layer." }
+        },
+        "additionalProperties": false
+      }
+    }
   },
   "additionalProperties": false
 }

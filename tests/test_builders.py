@@ -262,3 +262,121 @@ def test_upsert_petition_validates_and_omits_unset():
     bare = upsert_petition(system="eu-eci", petition_id="ECI(2026)000001")
     assert "title" not in bare
     _validate("UpsertPetition", 1, bare)
+
+
+def test_upsert_contract_threads_parties_with_every_field():
+    """A two-member consortium plus a named tenderer round-trips through
+    the builder and validates — every parties field exercised."""
+    consortium_lead = builders.contract_party(
+        company_gmr_id="00040372-dad6-5d34-882c-8b8624b4e734",
+        name="VINCI CONSTRUCTION GRANDS PROJETS",
+        role="winner", rank=1,
+        is_consortium_member=True, tendering_party_id="TPA-0001",
+        match_tier="lei", match_confidence=1.0, match_layer=2,
+    )
+    consortium_member = builders.contract_party(
+        company_gmr_id="11111111-2222-5333-8444-666666666666",
+        name="EIFFAGE GENIE CIVIL",
+        role="winner", rank=1,
+        is_consortium_member=True, tendering_party_id="TPA-0001",
+        match_tier="name_country", match_confidence=0.95, match_layer=2,
+    )
+    tenderer = builders.contract_party(
+        company_gmr_id="22222222-3333-5444-8555-777777777777",
+        name="BOUYGUES TP",
+        role="named_tenderer",
+    )
+    p = builders.upsert_contract(
+        ted_notice_id="912f1717-1ace-413d-aa61-cd21cd6b95e7",
+        company_gmr_id="00040372-dad6-5d34-882c-8b8624b4e734",
+        match_tier="lei", match_confidence=1.0, match_layer=2,
+        notice_kind="award", notice_type="can-standard",
+        procedure_id="c0ffee00-1ace-413d-aa61-cd21cd6b95e7",
+        contract_key="c0ffee00-1ace-413d-aa61-cd21cd6b95e7",
+        current_value=12500000.0, is_current=True,
+        parties=[consortium_lead, consortium_member, tenderer],
+    )
+    validate("UpsertContract", 1, p)  # raises on failure
+    assert len(p["parties"]) == 3
+    assert p["parties"][0]["is_consortium_member"] is True
+    assert p["parties"][0]["tendering_party_id"] == "TPA-0001"
+    assert p["parties"][0]["rank"] == 1
+    assert p["parties"][1]["match_confidence"] == 0.95
+    # non-consortium tenderer: default-false flag stays absent (compact)
+    assert "is_consortium_member" not in p["parties"][2]
+    assert "rank" not in p["parties"][2]
+    # top-level primary-winner fields untouched by parties
+    assert p["company_gmr_id"] == "00040372-dad6-5d34-882c-8b8624b4e734"
+    assert p["match_tier"] == "lei"
+
+
+def test_upsert_contract_parties_reject_unknown_key():
+    """additionalProperties:false bites at the nested parties level."""
+    import pytest
+    from fontem_event_schemas import EventValidationError
+
+    party = builders.contract_party(
+        company_gmr_id="00040372-dad6-5d34-882c-8b8624b4e734",
+        name="ACME SA", role="winner",
+    )
+    party["share_pct"] = 50  # not in the schema
+    p = builders.upsert_contract(ted_notice_id="n-1", parties=[party])
+    with pytest.raises(EventValidationError) as excinfo:
+        validate("UpsertContract", 1, p)
+    assert any("share_pct" in e for e in excinfo.value.errors)
+
+
+def test_upsert_contract_parties_reject_bad_role():
+    import pytest
+    from fontem_event_schemas import EventValidationError
+
+    p = builders.upsert_contract(
+        ted_notice_id="n-1",
+        parties=[{"company_gmr_id": "00040372-dad6-5d34-882c-8b8624b4e734",
+                  "name": "ACME SA", "role": "loser"}],
+    )
+    with pytest.raises(EventValidationError):
+        validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_threads_modification_collapse_fields():
+    """notice_kind/notice_type/procedure_id/modifies_publication_number/
+    contract_key/current_value/is_current all land via the builder —
+    producers no longer need the payload.update() escape hatch."""
+    p = builders.upsert_contract(
+        ted_notice_id="mod-1",
+        notice_kind="modification", notice_type="can-modif",
+        procedure_id="c0ffee00-1ace-413d-aa61-cd21cd6b95e7",
+        modifies_publication_number="295342-2026",
+        contract_key="c0ffee00-1ace-413d-aa61-cd21cd6b95e7",
+        current_value=2184.6, is_current=True,
+    )
+    assert p["notice_kind"] == "modification"
+    assert p["notice_type"] == "can-modif"
+    assert p["modifies_publication_number"] == "295342-2026"
+    assert p["contract_key"] == "c0ffee00-1ace-413d-aa61-cd21cd6b95e7"
+    assert p["current_value"] == 2184.6
+    assert p["is_current"] is True
+    validate("UpsertContract", 1, p)
+    # a superseded restatement keeps its meaningful False
+    superseded = builders.upsert_contract(
+        ted_notice_id="mod-0", notice_kind="modification", is_current=False,
+    )
+    assert superseded["is_current"] is False
+    validate("UpsertContract", 1, superseded)
+    # unset stays absent
+    bare = builders.upsert_contract(ted_notice_id="n-2")
+    for k in ("notice_kind", "notice_type", "procedure_id",
+              "modifies_publication_number", "contract_key",
+              "current_value", "is_current", "parties"):
+        assert k not in bare
+    validate("UpsertContract", 1, bare)
+
+
+def test_upsert_contract_rejects_bad_notice_kind():
+    import pytest
+    from fontem_event_schemas import EventValidationError
+
+    p = builders.upsert_contract(ted_notice_id="n-1", notice_kind="cancellation")
+    with pytest.raises(EventValidationError):
+        validate("UpsertContract", 1, p)
