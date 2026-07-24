@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fontem-event-schemas"
-version = "0.2.0"
+version = "0.3.0"
 description = "JSON Schemas for the gmr_app events.entity_events log."
 requires-python = ">=3.11"
 authors = [{ name = "Fontem", email = "ops@void42.internal" }]

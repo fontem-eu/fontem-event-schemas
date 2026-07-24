@@ -253,6 +253,7 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     value_payable_discrepancy: bool | None = None,
     value_quarantined: bool | None = None,
     value_quarantine_reason: str | None = None,
+    value_scale_corrected: str | None = None,
     match_tier: str | None = None,
     match_confidence: float | None = None,
     match_layer: int | None = None,
@@ -277,6 +278,11 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     parties: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build an UpsertContract payload (v1).
+
+    ``value_scale_corrected`` marks a notice whose monetary fields were
+    rescaled /1000 at load time to undo the milli-euro fixed-point leak
+    in a national eForms gateway (see fontem-api scale_normalization).
+    Values: "ratio" (sibling-estimate evidence) or "country_prior".
 
     ``ted_notice_id`` is the eForms internal UUID (the cbc:ID root
     identifier). ``ted_publication_number`` is the human-readable
@@ -335,6 +341,7 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("value_payable_discrepancy", value_payable_discrepancy),
         ("value_quarantined", value_quarantined),
         ("value_quarantine_reason", value_quarantine_reason),
+        ("value_scale_corrected", value_scale_corrected),
         ("match_tier", match_tier),
         ("match_confidence", match_confidence),
         ("match_layer", match_layer),
