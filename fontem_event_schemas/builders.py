@@ -466,6 +466,39 @@ def upsert_exchange_rate(
     return out
 
 
+def translate_authority_name(
+    *,
+    authority_id: str,
+    name: str,
+    translations: dict[str, str],
+    source_lang: str | None = None,
+    method: str | None = None,
+    translated_at: str | None = None,
+) -> dict[str, Any]:
+    """Build a TranslateAuthorityName payload (v1).
+
+    Multilingual name enrichment for one authority. ``translations``
+    maps ISO 639-1 code -> translated name; blank values are dropped.
+    Carries the canonical ``name`` so sinks recompose derived state
+    (embed_text, name_<lang> props, labels) statelessly — no read of
+    prior sink state, order-independent on replay.
+    """
+    out: dict[str, Any] = {
+        "authority_id": authority_id,
+        "name": name,
+        "translations": {
+            k: v for k, v in translations.items() if v and str(v).strip()
+        },
+    }
+    if source_lang:
+        out["source_lang"] = source_lang
+    if method:
+        out["method"] = method
+    if translated_at:
+        out["translated_at"] = translated_at
+    return out
+
+
 def assert_same_as(
     *,
     a_iri: str,
