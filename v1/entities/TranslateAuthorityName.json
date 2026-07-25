@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fontem.eu/v1/entities/TranslateAuthorityName.json",
+  "title": "TranslateAuthorityName",
+  "description": "Multilingual name enrichment for a public authority. Emitted by the translation producer (batch ETL; later the consolidator enrichment pass) after machine-translating an authority's canonical name into the supported EU languages. Self-contained by design: it carries the canonical source `name` so every sink recomposes derived state from the payload alone — the Neo4j sink sets name_<lang> properties, the embedding sink folds the translations into the searchable embed_text/name_lex and re-embeds (so keyword AND semantic search match translated names), and the Virtuoso sink mirrors them as language-tagged skos:altLabel triples via a scoped replace. Idempotent on authority_id; carries no structured attributes (country, authority_type, nuts) — those stay owned by UpsertAuthority.",
+  "type": "object",
+  "required": ["authority_id", "name", "translations"],
+  "properties": {
+    "authority_id": { "type": "string", "format": "uuid", "description": "The Authority this enriches — the same deterministic UUID5 UpsertAuthority uses." },
+    "name":         { "type": "string", "description": "Canonical source name that was translated. Carried so sinks recompose embed_text/labels without reading prior state." },
+    "source_lang":  { "type": ["string", "null"], "description": "ISO 639-1 code of the source name's language, when known (e.g. 'pl'). Sinks may record it as name_lang." },
+    "translations": {
+      "type": "object",
+      "description": "Map of ISO 639-1 language code -> translated name. Only the supported EU languages appear; the source language may be omitted. At least one entry.",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string" }
+    },
+    "method":        { "type": ["string", "null"], "description": "Translation provenance, e.g. 'mistral-medium' or 'backfill:neo4j'." },
+    "translated_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false
+}

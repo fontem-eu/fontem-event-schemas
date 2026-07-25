@@ -1,0 +1,12 @@
+{
+  "authority_id": "6b1e6f4a-2c3d-5e6f-8a9b-0c1d2e3f4a5b",
+  "name": "Kraśnickie Przedsiębiorstwo Wodociągów i Kanalizacji",
+  "source_lang": "pl",
+  "translations": {
+    "de": "Kraśnicker Wasser- und Abwasserunternehmen GmbH",
+    "en": "Kraśnik Water and Sewage Company",
+    "fr": "Compagnie des eaux et de l'assainissement de Kraśnik"
+  },
+  "method": "mistral-medium",
+  "translated_at": "2026-07-25T12:00:00Z"
+}
