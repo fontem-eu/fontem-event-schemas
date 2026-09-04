@@ -522,6 +522,28 @@ def assert_same_as(
     return out
 
 
+def retract_same_as(
+    *,
+    a_iri: str,
+    b_iri: str,
+    reason: str,
+    reviewer: str | None = None,
+    retracted_method: str | None = None,
+) -> dict[str, Any]:
+    """Build a RetractSameAs payload (v1).
+
+    Withdraws an equivalence that was actually asserted. Declining a
+    review candidate is NOT a retraction — a candidate never asserted
+    anything, so there is nothing to withdraw.
+    """
+    out: dict[str, Any] = {"a_iri": a_iri, "b_iri": b_iri, "reason": reason}
+    if reviewer is not None:
+        out["reviewer"] = reviewer
+    if retracted_method is not None:
+        out["retracted_method"] = retracted_method
+    return out
+
+
 def begin_graph_replace(
     *, graph_iri: str, label: str, domain: str | None = None,
 ) -> dict[str, Any]:

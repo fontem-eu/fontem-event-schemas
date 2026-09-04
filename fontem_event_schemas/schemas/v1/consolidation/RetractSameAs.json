@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fontem.eu/v1/consolidation/RetractSameAs.json",
+  "title": "RetractSameAs",
+  "description": "Withdraws a previously asserted equivalence. Emitted when an operator records a :NOT_SAME_AS correction against a SAME_AS that turned out to be wrong. The Virtuoso sink removes the <a> owl:sameAs <b> triple (both directions) from the entity-type graph; the Neo4j sink deletes the SAME_AS edge and writes the NOT_SAME_AS edge so the consolidator's rules will not re-propose the pair. A retraction is not a candidate decision: declining a proposal never asserted anything and so needs no retraction.",
+  "type": "object",
+  "required": ["a_iri", "b_iri", "reason"],
+  "properties": {
+    "a_iri":  { "type": "string", "format": "uri", "description": "Canonical IRI of side A." },
+    "b_iri":  { "type": "string", "format": "uri", "description": "Canonical IRI of side B." },
+    "reason": { "type": "string", "description": "Why the assertion was wrong. Free text from the operator." },
+    "reviewer": { "type": ["string", "null"], "description": "Who recorded the correction." },
+    "retracted_method": { "type": ["string", "null"], "description": "The method/rule that had produced the withdrawn assertion, carried for analysis of which rules misfire." }
+  },
+  "additionalProperties": false
+}
