@@ -1,0 +1,7 @@
+{
+  "a_iri": "http://data.fontem.eu/id/Company/2bc33b09-6db2-537b-ae19-4422c97c75db",
+  "b_iri": "http://data.fontem.eu/id/Company/8d55cd07-1162-5a82-8495-78064497fb84",
+  "reason": "Distinct legal entities: Handelsregister HRB 117457 (Pullach) vs HRB 165605 (Berlin).",
+  "reviewer": "review@fontem.eu",
+  "retracted_method": "exact_name_country_match"
+}

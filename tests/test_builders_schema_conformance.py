@@ -46,6 +46,9 @@ _CASES = [
       "method": "lei_exact"}),
     ("UpsertPetition", builders.upsert_petition,
      {"system": "eci", "petition_id": "p-1"}),
+    ("RetractSameAs", builders.retract_same_as,
+     {"a_iri": "urn:a", "b_iri": "urn:b",
+      "reason": "different registration numbers"}),
 ]
 
 
