@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fontem.eu/v1/control/PurgeSubject.json",
+  "title": "PurgeSubject",
+  "description": "Remove one subject IRI from one named graph, using the IRI exactly as given. For subjects a sink can no longer address through its normal write path — typically stranded by a change to how subject IRIs are built. The Virtuoso sink percent-encodes every subject IRI it writes (since 2026-06-07), and percent-encoding is idempotent, so no Delete* event can ever name a pre-2026-06-07 raw non-ASCII subject: emitting one would encode the IRI and delete the LIVE record instead. Those subjects are unreachable by any other means and their stale triples never expire. This event is the escape hatch, and is deliberately narrow: it deletes a subject and nothing else, asserts nothing about the entity, and is not a substitute for a Delete* event on an addressable subject.",
+  "type": "object",
+  "required": ["graph_iri", "subject_iri", "reason"],
+  "properties": {
+    "graph_iri": {
+      "type": "string",
+      "format": "uri",
+      "description": "Named graph holding the subject. Scoped deliberately: a stranded subject is an artifact of one graph's write path, and a store-wide delete would be far harder to review."
+    },
+    "subject_iri": {
+      "type": "string",
+      "description": "The subject to delete, byte-for-byte as stored. NOT normalised, encoded, or otherwise rewritten by the sink — that rewriting is the reason the subject is unreachable in the first place. Not declared format:uri: these IRIs contain raw non-ASCII precisely because they predate the encoding fix."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why this subject is being purged, for the audit trail. Required: a destructive verbatim delete that bypasses the normal addressing rules should never appear in the log without a stated cause."
+    }
+  },
+  "additionalProperties": false
+}

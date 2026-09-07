@@ -42,6 +42,7 @@ _EVENT_TYPE_CATEGORY: dict[str, str] = {
     # control
     "BeginGraphReplace": "control",
     "EndGraphReplace":   "control",
+    "PurgeSubject":      "control",
     # entities
     "UpsertCompany":          "entities",
     "UpsertInvestmentFund":   "entities",
