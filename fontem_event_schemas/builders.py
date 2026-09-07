@@ -564,6 +564,31 @@ def end_graph_replace(
     return out
 
 
+def purge_subject(
+    *, graph_iri: str, subject_iri: str, reason: str,
+) -> dict[str, Any]:
+    """Build a PurgeSubject control payload (v1).
+
+    For subjects a sink can no longer address through its normal write
+    path. The Virtuoso sink percent-encodes every subject IRI it writes,
+    and percent-encoding is idempotent, so a Delete* event naming a raw
+    non-ASCII subject encodes to the LIVE subject and deletes that
+    instead — the opposite of the intent. ``subject_iri`` here is used
+    byte-for-byte.
+
+    ``reason`` is required, not optional: this is the one event that
+    deletes by an IRI the normal rules cannot produce, and the log
+    should say why on every occurrence.
+    """
+    if not reason or not reason.strip():
+        raise ValueError("purge_subject requires a non-empty reason")
+    return {
+        "graph_iri": graph_iri,
+        "subject_iri": subject_iri,
+        "reason": reason,
+    }
+
+
 def upsert_petition(  # pylint: disable=too-many-arguments,too-many-locals
     *,
     system: str,

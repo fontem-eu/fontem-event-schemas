@@ -1,0 +1,5 @@
+{
+  "graph_iri": "http://data.fontem.eu/graph/listing",
+  "subject_iri": "http://data.fontem.eu/id/Listing/BJÖRN.ST",
+  "reason": "stranded by the 2026-06-07 IRI percent-encoding fix (37af28e); live subject is .../Listing/BJ%C3%96RN.ST"
+}
