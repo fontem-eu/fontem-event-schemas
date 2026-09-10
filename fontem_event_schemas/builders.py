@@ -566,15 +566,27 @@ def end_graph_replace(
 
 def purge_subject(
     *, graph_iri: str, subject_iri: str, reason: str,
+    only_predicates: "list[str] | None" = None,
 ) -> dict[str, Any]:
     """Build a PurgeSubject control payload (v1).
 
     For subjects a sink can no longer address through its normal write
-    path. The Virtuoso sink percent-encodes every subject IRI it writes,
-    and percent-encoding is idempotent, so a Delete* event naming a raw
-    non-ASCII subject encodes to the LIVE subject and deletes that
-    instead — the opposite of the intent. ``subject_iri`` here is used
-    byte-for-byte.
+    path. A subject gets there two ways.
+
+    The IRI is unproducible: the Virtuoso sink percent-encodes every
+    subject IRI it writes, and percent-encoding is idempotent, so a
+    Delete* event naming a raw non-ASCII subject encodes to the LIVE
+    subject and deletes that instead — the opposite of the intent.
+    ``subject_iri`` here is used byte-for-byte.
+
+    Or the IRI is ordinary but nothing routes there any more: a renderer
+    that used to write a subject family stops doing so and its leftovers
+    are refreshed by no upsert and named by no Delete*. Those subjects
+    are indistinguishable from live ones by IRI alone, so pass
+    ``only_predicates`` — every predicate the subject may carry. The
+    sink checks the store against it and refuses the purge if the
+    subject holds anything else, which is what stops a mistaken event
+    from deleting a record in use.
 
     ``reason`` is required, not optional: this is the one event that
     deletes by an IRI the normal rules cannot produce, and the log
@@ -582,11 +594,20 @@ def purge_subject(
     """
     if not reason or not reason.strip():
         raise ValueError("purge_subject requires a non-empty reason")
-    return {
+    payload: dict[str, Any] = {
         "graph_iri": graph_iri,
         "subject_iri": subject_iri,
         "reason": reason,
     }
+    if only_predicates is not None:
+        if not only_predicates:
+            raise ValueError(
+                "purge_subject only_predicates must be non-empty when given; "
+                "an empty set would assert the subject carries no triples at "
+                "all, which no purge can be based on"
+            )
+        payload["only_predicates"] = list(dict.fromkeys(only_predicates))
+    return payload
 
 
 def upsert_petition(  # pylint: disable=too-many-arguments,too-many-locals

@@ -54,3 +54,56 @@ def test_rejects_unknown_fields():
             "graph_iri": _G, "subject_iri": _RAW, "reason": "x",
             "cascade": True,
         })
+
+
+def test_only_predicates_rides_in_the_payload_when_given():
+    """The evidence half of a case-(2) purge: the subject's IRI is
+    ordinary, so the event must declare what the subject may carry and
+    let the sink check it against the store."""
+    payload = builders.purge_subject(
+        graph_iri=_G,
+        subject_iri="http://data.fontem.eu/id/Notice/639139-2020",
+        reason="orphan Notice subject from a mis-routed rollup",
+        only_predicates=[
+            "http://data.fontem.eu/ontology#isCurrent",
+            "http://data.fontem.eu/ontology#currentValue",
+        ],
+    )
+    assert payload["only_predicates"] == [
+        "http://data.fontem.eu/ontology#isCurrent",
+        "http://data.fontem.eu/ontology#currentValue",
+    ]
+    validate("PurgeSubject", 1, payload)
+
+
+def test_only_predicates_is_absent_when_not_given():
+    """Case (1) — an unproducible IRI — needs no predicate evidence, and
+    the payload must not grow an empty field that the sink would then
+    have to interpret."""
+    payload = builders.purge_subject(
+        graph_iri=_G, subject_iri=_RAW, reason="stranded by the encoding fix",
+    )
+    assert "only_predicates" not in payload
+    validate("PurgeSubject", 1, payload)
+
+
+def test_duplicate_predicates_are_collapsed():
+    """The schema declares uniqueItems, so a caller passing the same
+    predicate twice would fail validation rather than be tidied up."""
+    payload = builders.purge_subject(
+        graph_iri=_G, subject_iri="http://data.fontem.eu/id/Notice/n-1",
+        reason="orphan", only_predicates=["urn:p", "urn:p", "urn:q"],
+    )
+    assert payload["only_predicates"] == ["urn:p", "urn:q"]
+    validate("PurgeSubject", 1, payload)
+
+
+def test_an_empty_only_predicates_is_refused():
+    """An empty set asserts the subject carries no triples at all, which
+    is not something a purge can be based on -- and would silently
+    become 'refuse everything' in the sink."""
+    with pytest.raises(ValueError):
+        builders.purge_subject(
+            graph_iri=_G, subject_iri="http://data.fontem.eu/id/Notice/n-1",
+            reason="orphan", only_predicates=[],
+        )
