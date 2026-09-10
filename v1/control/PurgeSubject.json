@@ -2,9 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.fontem.eu/v1/control/PurgeSubject.json",
   "title": "PurgeSubject",
-  "description": "Remove one subject IRI from one named graph, using the IRI exactly as given. For subjects a sink can no longer address through its normal write path — typically stranded by a change to how subject IRIs are built. The Virtuoso sink percent-encodes every subject IRI it writes (since 2026-06-07), and percent-encoding is idempotent, so no Delete* event can ever name a pre-2026-06-07 raw non-ASCII subject: emitting one would encode the IRI and delete the LIVE record instead. Those subjects are unreachable by any other means and their stale triples never expire. This event is the escape hatch, and is deliberately narrow: it deletes a subject and nothing else, asserts nothing about the entity, and is not a substitute for a Delete* event on an addressable subject.",
+  "description": "Remove one subject IRI from one named graph, using the IRI exactly as given. For subjects a sink can no longer address through its normal write path. There are two ways a subject becomes unreachable. (1) The IRI itself is unproducible: the Virtuoso sink percent-encodes every subject IRI it writes (since 2026-06-07), and percent-encoding is idempotent, so no Delete* event can ever name a pre-2026-06-07 raw non-ASCII subject -- emitting one would encode the IRI and delete the LIVE record instead. (2) The IRI is perfectly producible, but nothing routes there any more: a renderer that used to write a subject family stops doing so, and its leftovers are refreshed by no upsert and named by no Delete*. Case (2) subjects look ordinary, so an event claiming one must also declare `only_predicates` -- the complete set of predicates the subject may carry -- and the sink refuses the purge unless the store agrees. That check is what keeps a typo'd PurgeSubject from becoming an unguarded whole-subject delete on live data. This event is deliberately narrow: it deletes a subject and nothing else, asserts nothing about the entity, and is not a substitute for a Delete* event on an addressable subject.",
   "type": "object",
-  "required": ["graph_iri", "subject_iri", "reason"],
+  "required": [
+    "graph_iri",
+    "subject_iri",
+    "reason"
+  ],
   "properties": {
     "graph_iri": {
       "type": "string",
@@ -19,6 +23,16 @@
       "type": "string",
       "minLength": 1,
       "description": "Why this subject is being purged, for the audit trail. Required: a destructive verbatim delete that bypasses the normal addressing rules should never appear in the log without a stated cause."
+    },
+    "only_predicates": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "The complete set of predicates this subject is expected to carry. When present the sink must verify, against the store, that the subject carries nothing outside this set, and refuse the purge otherwise. Required for a subject whose IRI the normal write path could still produce: such a subject is indistinguishable from a live one by IRI alone, and this is the evidence that it is a leftover rather than a record in use. Omit only when the IRI is itself unproducible."
     }
   },
   "additionalProperties": false
