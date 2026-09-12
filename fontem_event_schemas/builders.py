@@ -269,12 +269,16 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     eu_funded: bool | None = None,
     funding_programme: str | None = None,
     procedure_id: str | None = None,
+    legacy_procedure_id: str | None = None,
     notice_type: str | None = None,
+    notice_version: str | None = None,
     notice_kind: str | None = None,
     modifies_publication_number: str | None = None,
+    modifies_notice_id: str | None = None,
     current_value: float | None = None,
     is_current: bool | None = None,
     contract_key: str | None = None,
+    award_ingested: bool | None = None,
     parties: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build an UpsertContract payload (v1).
@@ -308,13 +312,21 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     with the stored total (an internal source inconsistency) even when the
     contract is otherwise kept.
 
-    Modification-collapse fields: ``notice_kind`` ('award' |
-    'modification') is the normalised classification of the notice;
-    ``procedure_id`` and ``modifies_publication_number`` carry the
-    linkage a modification uses to find its award; ``notice_type`` is
-    the raw eForms notice-type; ``contract_key`` / ``current_value`` /
-    ``is_current`` are the collapse_modifications outputs that make
-    value aggregates count each underlying contract once.
+    Contract-chain fields (all stamped from the notice XML by the
+    parser, not from the search API): ``procedure_id`` (BT-04) is the
+    contract identity for eForms notices and ``contract_key`` equals it;
+    legacy notices are keyed by their publication number and keep the
+    authority's file reference as ``legacy_procedure_id``.
+    ``notice_version`` (BT-757) makes ``(ted_notice_id, notice_version)``
+    the loader's skip unit. ``notice_kind`` ('award' | 'modification')
+    is the normalised classification; ``notice_type`` the raw eForms
+    code. A modification's back-link (BT-1501) arrives as exactly one of
+    ``modifies_publication_number`` / ``modifies_notice_id``; the sink
+    resolves it on write, so a modification adopts its root award's
+    entity and the chain is linked from the first event. ``is_current``
+    is true on the latest notice of a chain, ``current_value`` the
+    contract's last restated value, and ``award_ingested`` tells whether
+    the entity has seen its award yet — the sink maintains all three.
 
     ``parties`` is the full list of named suppliers on the notice —
     build items with ``contract_party`` so unset fields drop out. The
@@ -355,12 +367,16 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("eu_funded", eu_funded),
         ("funding_programme", funding_programme),
         ("procedure_id", procedure_id),
+        ("legacy_procedure_id", legacy_procedure_id),
         ("notice_type", notice_type),
+        ("notice_version", notice_version),
         ("notice_kind", notice_kind),
         ("modifies_publication_number", modifies_publication_number),
+        ("modifies_notice_id", modifies_notice_id),
         ("current_value", current_value),
         ("is_current", is_current),
         ("contract_key", contract_key),
+        ("award_ingested", award_ingested),
         ("parties", parties),
     ):
         if v is not None and v != "":

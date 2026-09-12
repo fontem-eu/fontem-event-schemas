@@ -380,3 +380,38 @@ def test_upsert_contract_rejects_bad_notice_kind():
     p = builders.upsert_contract(ted_notice_id="n-1", notice_kind="cancellation")
     with pytest.raises(EventValidationError):
         validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_threads_contract_chain_fields():
+    """A modification carries the identity stamps the parser now reads
+    from the notice (2026-09 single ingest path): procedure id, version,
+    the back-link in one of its two forms, and the entity-level
+    award_ingested flag the sink maintains. False must survive."""
+    p = builders.upsert_contract(
+        ted_notice_id="5f0530ee-2f91-494f-9aed-ea56ba4245de",
+        ted_publication_number="540529-2026",
+        procedure_id="afc0e4f6-c140-435b-8f60-b1bf37e6860e",
+        notice_version="01",
+        notice_type="can-modif",
+        notice_kind="modification",
+        modifies_publication_number="549184-2020",
+        contract_key="afc0e4f6-c140-435b-8f60-b1bf37e6860e",
+        is_current=True,
+        award_ingested=False,
+    )
+    assert p["notice_version"] == "01"
+    assert p["modifies_publication_number"] == "549184-2020"
+    assert "modifies_notice_id" not in p
+    assert p["award_ingested"] is False
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_back_link_as_notice_id_and_legacy_reference():
+    p = builders.upsert_contract(
+        ted_notice_id="x",
+        modifies_notice_id="a64a67f4-a562-4014-ae25-232da2f4fa1c",
+        legacy_procedure_id="EKR001152382021",
+    )
+    assert p["modifies_notice_id"] == "a64a67f4-a562-4014-ae25-232da2f4fa1c"
+    assert p["legacy_procedure_id"] == "EKR001152382021"
+    validate("UpsertContract", 1, p)

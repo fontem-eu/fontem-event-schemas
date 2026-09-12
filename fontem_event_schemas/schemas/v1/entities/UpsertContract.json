@@ -233,7 +233,14 @@
         "string",
         "null"
       ],
-      "description": "eForms procedure-identifier (UUID). Shared by an award notice and its contract-modification (can-modif) notices; link_ted_modifications joins on it to build MODIFIES edges. Stamped by the TED incremental search-API loader."
+      "description": "eForms procedure identifier (BT-04 ContractFolderID, a UUID), read from the notice XML. Shared by the award notice and every contract-modification (can-modif) notice of the same procedure, so it is the contract identity (contract_key) for eForms notices. Null on legacy TED_EXPORT notices, which are keyed by publication number instead (see legacy_procedure_id)."
+    },
+    "legacy_procedure_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Pre-eForms only: the reference number the contracting authority gave the procedure (S-form II.1.1 REFERENCE_NUMBER). Kept and indexed for querying; never the contract key (the publication number is, for legacy notices)."
     },
     "notice_type": {
       "type": [
@@ -242,12 +249,26 @@
       ],
       "description": "eForms notice-type (e.g. can-standard, can-modif). 'can-modif' marks a contract-modification notice."
     },
+    "notice_version": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "eForms notice version (BT-757 root cbc:VersionID, e.g. '01', '02'). With ted_notice_id it names one published version of a notice, which is the unit the loader skips on: a notice already ingested at this version is not re-emitted."
+    },
     "modifies_publication_number": {
       "type": [
         "string",
         "null"
       ],
-      "description": "On a modification (can-modif), the original award's publication-number (or notice identifier) it modifies. Provenance for the MODIFIES link; the join itself uses procedure_id."
+      "description": "On a modification (can-modif / legacy F20): the publication number of the notice it modifies (BT-1501 ChangedNoticeIdentifier, or legacy REF_NOTICE), in TED's NNNNNN-YYYY form. Set when the buyer wrote the back-link as a publication number; see modifies_notice_id for the other form. The sink resolves it to the previous notice on write so the chain is linked from the first event."
+    },
+    "modifies_notice_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "On a modification: the previous notice's eForms notice id (bare UUID) when the buyer wrote the BT-1501 back-link in its '<uuid>-<version>' form rather than as a publication number. Exactly one of modifies_publication_number / modifies_notice_id is set on a modification that carries a back-link."
     },
     "tenders_received": {
       "type": [
@@ -303,21 +324,21 @@
         "number",
         "null"
       ],
-      "description": "Collapsed value of the underlying contract in EUR: the latest restated value across the original award and its contract-modification (can-modif) notices, or the award value when never modified. Materialised by the collapse_modifications ETL pass. Value aggregates sum this over is_current nodes so each contract counts once."
+      "description": "Value of the underlying contract in EUR as last restated: the latest modification's value along the chain, or the award value when never modified. Maintained on the contract entity by the sink at write time. Value aggregates sum this over is_current nodes so each contract counts once."
     },
     "is_current": {
       "type": [
         "boolean",
         "null"
       ],
-      "description": "True on the single canonical :Contract node per underlying contract (the award, or the latest modification when the award was never ingested). Value/count aggregates include is_current nodes only; superseded modification restatements are false. Absent on never-modified nodes, which readers default to canonical."
+      "description": "True on the notice that is the latest in its contract's chain (the award until modified, then the most recent modification); false on every earlier notice of the chain. Maintained by the sink on every write, so aggregates over is_current nodes count each underlying contract once."
     },
     "contract_key": {
       "type": [
         "string",
         "null"
       ],
-      "description": "Stable identity the collapse_modifications pass grouped a contract's award + modification notices under (procedure_id, else the modified/own publication reference)."
+      "description": "Stable identity of the underlying contract shared by its award and modification notices: procedure_id for eForms notices, the own publication number for legacy notices. A modification whose back-link resolves to an already-ingested award adopts that award's key; the sink upholds one contract entity per key."
     },
     "notice_kind": {
       "type": [
@@ -329,7 +350,14 @@
         "modification",
         null
       ],
-      "description": "Coarse classification of the notice: 'award' for a contract-award notice, 'modification' for a contract-modification notice (eForms can-modif or legacy F20). Normalised across source formats so consumers need not re-derive it from notice_type."
+      "description": "Coarse classification of the notice: 'award' for a contract-award notice, 'modification' for a contract-modification notice (eForms can-modif or legacy F20). Normalised across source formats so consumers need not re-derive it from notice_type; carried onto the contract entity so a modification-only entity is recognisable."
+    },
+    "award_ingested": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "On the contract entity: true once an award notice of this contract has been ingested; false while the entity is known only through modification notices (award not yet loaded, pre-eForms, or referenced by a placeholder). The repair/backfill meter is the count of false entities."
     },
     "parties": {
       "type": [
