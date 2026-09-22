@@ -54,14 +54,14 @@
         "string",
         "null"
       ],
-      "description": "The contract's award/conclusion date exactly as published (legacy DATE_CONCLUSION_CONTRACT; eForms BT-145 efac:SettledContract/cbc:IssueDate), before the date sanity rules. Placeholder dates ('2000-01-01', '1900-01-01') are discarded from the typed fields but persisted here, so the gateway-watermark census can run from the graph instead of a rescan of the mirrored XML."
+      "description": "The contract's award/conclusion date exactly as published (legacy DATE_CONCLUSION_CONTRACT; eForms efac:SettledContract/cbc:AwardDate, BT-145), before the date sanity rules. Placeholder dates ('2000-01-01', '1900-01-01') are discarded from the typed fields but persisted here, so the gateway-watermark census can run from the graph instead of a rescan of the mirrored XML."
     },
     "tender_result_award_date_raw": {
       "type": [
         "string",
         "null"
       ],
-      "description": "The lot result's winner-decision date exactly as published (eForms BT-1451 cac:TenderResult/cbc:AwardDate), before the date sanity rules. This is where the Portuguese eForms gateway writes its '2000-01-01' watermark (present from H2-2024 on). The watermark lowers the evidence bar for a scale correction but is a prior, not proof — most watermarked notices carry a sound value."
+      "description": "The lot result's winner-decision date exactly as published (eForms BT-1451 cac:TenderResult/cbc:AwardDate), before the date sanity rules. Many eSenders, across countries, write the placeholder '2000-01-01' here when they fill only the contract-level date; it identifies a submitting-software family, not a country or a defect. A placeholder lowers the evidence bar for a scale correction but is a prior, not proof — most notices carrying it have a sound value."
     },
     "value_eur": {
       "type": [
@@ -275,7 +275,7 @@
         "string",
         "null"
       ],
-      "description": "The winning tender's identifier exactly as published (eForms BT-3201 efac:LotTender/efac:TenderReference/cbc:ID; the legacy file reference where one exists). Persisted verbatim because the PT gateway watermark sets it to '0.0' — the second half of the watermark pair with tender_result_award_date_raw."
+      "description": "The winning tender's identifier exactly as published (eForms BT-3201 efac:LotTender/efac:TenderReference/cbc:ID; the legacy file reference where one exists). Persisted verbatim because one gateway family sets it to the placeholder '0.0' — the second half of a watermark pair with tender_result_award_date_raw, whose reach across countries the census will establish."
     },
     "notice_type": {
       "type": [
