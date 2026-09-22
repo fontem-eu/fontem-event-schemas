@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fontem.eu/v1/entities/UpsertFrameworkAgreement.json",
+  "title": "UpsertFrameworkAgreement",
+  "description": "A framework agreement as a first-class entity, keyed by the PROCEDURE that established it rather than by any one notice, so the establishing notice, its corrections and every call-off converge on one node — which the per-notice UpsertContract cannot do. Sinks materialise ESTABLISHED (Authority→FrameworkAgreement) from buyer_authority_id, PARTY_TO {lot, rank} (Company→FrameworkAgreement) from suppliers, and CALL_OFF_OF (Contract→FrameworkAgreement) from UpsertContract.framework_id. Aggregation rule: the ceiling is capacity, not spend — framework nodes never enter spend sums; call-off contracts do.",
+  "type": "object",
+  "required": [
+    "framework_id"
+  ],
+  "properties": {
+    "framework_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identity of the framework = the establishing procedure's contract key: BT-04 ContractFolderID for eForms, the establishing notice's publication number for legacy notices. Several notices about one framework share it; call-offs reference it as UpsertContract.framework_id."
+    },
+    "buyer_authority_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid",
+      "description": "authority_id of the contracting authority (or central purchasing body) that established the framework. Sinks materialise ESTABLISHED from it."
+    },
+    "establishing_notice_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ted_notice_id of the notice that established the framework (the eForms notice UUID, or the legacy notice id) — provenance for the node; identity is framework_id."
+    },
+    "country": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ISO 3166-1 alpha-3 country code of the establishing authority."
+    },
+    "ceiling_eur": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Maximum value of the framework in EUR (eForms BT-118 / BT-709, converted at the establishing notice's publication date). Capacity, never spend: readers show call-off spend consumed against it and no aggregate sums it."
+    },
+    "ceiling_currency": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Original ISO 4217 currency of the ceiling before EUR conversion."
+    },
+    "ceiling_original": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "The ceiling in the original currency."
+    },
+    "reestimated_value_eur": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Re-estimated value of the framework in EUR (eForms BT-660): the buyer's later expectation of what will actually be called off, distinct from the ceiling."
+    },
+    "duration_start": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "Start of the framework's validity period (ISO date)."
+    },
+    "duration_end": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "End of the framework's validity period (ISO date). Call-offs published after it are still attached; the date is what the reader shows, not a filter."
+    },
+    "duration_months": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Duration in months (eForms BT-36 normalised to months) when the notice gives a duration rather than dates; both forms may be present."
+    },
+    "cpv": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Primary CPV code of the framework."
+    },
+    "lot_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Number of lots the framework covers."
+    },
+    "supplier_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Number of economic operators admitted to the framework as published (eForms: one SettledContract per framework supplier). May exceed the length of suppliers when some were withheld by the cleaning stage or not resolved."
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "suppliers": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Every economic operator admitted to the framework (the PARTY_TO set). Multi-supplier is the normal case; admission is not a call-off award, so no value is carried here — call-off spend lives on the call-off contracts.",
+      "items": {
+        "type": "object",
+        "required": [
+          "company_gmr_id"
+        ],
+        "properties": {
+          "company_gmr_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Resolved company gmr_id of the admitted operator."
+          },
+          "lot": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Lot identifier the operator is admitted for (eForms 'LOT-0001' style); null when the framework is single-lot or the notice does not say."
+          },
+          "rank": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "cbc:RankCode within the lot's cascade when published; null otherwise."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -230,6 +230,35 @@ def contract_party(
     return out
 
 
+def withheld_supplier(
+    *,
+    name_raw: str,
+    reason: str,
+    role: str,
+    org_id: str | None = None,
+) -> dict[str, Any]:
+    """Build one item of UpsertContract ``suppliers_withheld`` (v1).
+
+    A supplier the cleaning stage refused to turn into an entity: the
+    name field held a sentence, a placeholder or other non-name text.
+    It goes here instead of ``parties`` and no company is created for
+    it — the sink MATCHes both ends of AWARDED_TO, so a reference to a
+    company that does not exist would re-create the junk node.
+    ``name_raw`` is kept verbatim (it is often the only pointer to
+    where the real award is published), ``reason`` is the rule id that
+    fired (e.g. ``it.notice_text_in_supplier_name``), ``role`` is what
+    the supplier would have been in ``parties``, and ``org_id`` is the
+    notice's own organisation id so the supplier can be found in the
+    XML again.
+    """
+    out: dict[str, Any] = {
+        "name_raw": name_raw, "reason": reason, "role": role,
+    }
+    if org_id is not None and org_id != "":
+        out["org_id"] = org_id
+    return out
+
+
 def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     *,
     ted_notice_id: str,
@@ -238,9 +267,12 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     authority_id: str | None = None,
     company_gmr_id: str | None = None,
     publication_date: str | None = None,
+    award_date_raw: str | None = None,
+    tender_result_award_date_raw: str | None = None,
     value_eur: float | None = None,
     value_currency: str | None = None,
     value_original: float | None = None,
+    value_raw: str | None = None,
     value_before_eur: float | None = None,
     value_before_original: float | None = None,
     estimated_value_eur: float | None = None,
@@ -260,18 +292,26 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     cpv: str | None = None,
     nuts: str | None = None,
     language: str | None = None,
+    notice_language: str | None = None,
     country: str | None = None,
     procedure_type: str | None = None,
     tenders_received: int | None = None,
     award_criterion_type: str | None = None,
     submission_deadline: str | None = None,
     is_framework: bool | None = None,
+    framework_id: str | None = None,
+    framework_max_value_eur: float | None = None,
+    framework_reestimated_value_eur: float | None = None,
+    framework_duration_months: int | None = None,
+    framework_max_operators: int | None = None,
     eu_funded: bool | None = None,
     funding_programme: str | None = None,
     procedure_id: str | None = None,
     legacy_procedure_id: str | None = None,
+    tender_reference: str | None = None,
     notice_type: str | None = None,
     notice_version: str | None = None,
+    eforms_sdk: str | None = None,
     notice_kind: str | None = None,
     modifies_publication_number: str | None = None,
     modifies_notice_id: str | None = None,
@@ -280,6 +320,8 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     contract_key: str | None = None,
     award_ingested: bool | None = None,
     parties: list[dict[str, Any]] | None = None,
+    suppliers_withheld: list[dict[str, Any]] | None = None,
+    cleaning_rules: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build an UpsertContract payload (v1).
 
@@ -332,6 +374,44 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     build items with ``contract_party`` so unset fields drop out. The
     top-level ``company_gmr_id`` + ``match_*`` fields are kept as the
     primary winner for backward compatibility.
+
+    Cleaning-stage fields (data-backlog Part 5; the cleaner never
+    rewrites silently, so every rule leaves the raw value and its name
+    on the event): ``suppliers_withheld`` lists the suppliers the
+    cleaner refused to turn into entities — build items with
+    ``withheld_supplier``; each is absent from ``parties`` and has no
+    company, its raw text kept as a pointer. ``cleaning_rules`` names
+    every rule id that fired on the notice, in firing order and each
+    once (duplicates are collapsed here; an empty list means the
+    notice was cleaned and nothing fired). ``value_raw`` is the award
+    amount verbatim as published, before scale correction or FX;
+    ``value_quarantine_reason`` says why a value was withheld and now
+    also carries cleaning rule ids such as
+    ``ambiguous_scale_x100_or_x1000``.
+
+    Watermark and provenance fields, all verbatim from the notice XML
+    and persisted so the gateway-watermark census can run from the
+    graph: ``award_date_raw`` (the contract's award/conclusion date,
+    BT-145 / DATE_CONCLUSION_CONTRACT, kept even when a placeholder
+    like ``2000-01-01`` is discarded from the typed field);
+    ``tender_result_award_date_raw`` (the lot result's winner-decision
+    date, BT-1451 — where the PT gateway writes its ``2000-01-01``
+    watermark); ``tender_reference`` (the winning tender's id, BT-3201
+    — ``0.0`` under the same watermark); ``notice_language`` (the
+    declared language as published, BT-702, before normalisation to
+    ``language``); ``eforms_sdk`` (the ``CustomizationID``, e.g.
+    ``eforms-sdk-1.14``, the version gateway-specific rules scope on).
+
+    Framework-agreement fields: on a CALL-OFF, ``framework_id`` names
+    the framework it draws from (the establishing procedure's contract
+    key, the same value as ``UpsertFrameworkAgreement.framework_id``)
+    and is absent when TED publishes no link. On the ESTABLISHING
+    contract (``is_framework`` true), ``framework_max_value_eur`` is
+    the ceiling (BT-118 / BT-709 — capacity, never spend, so it must
+    never enter a sum), ``framework_reestimated_value_eur`` the buyer's
+    re-estimate (BT-660), ``framework_duration_months`` the validity
+    (BT-36) and ``framework_max_operators`` how many operators the
+    framework admits (BT-113).
     """
     out: dict[str, Any] = {"ted_notice_id": ted_notice_id}
     for k, v in (
@@ -339,8 +419,11 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("title", title), ("authority_id", authority_id),
         ("company_gmr_id", company_gmr_id),
         ("publication_date", publication_date),
+        ("award_date_raw", award_date_raw),
+        ("tender_result_award_date_raw", tender_result_award_date_raw),
         ("value_eur", value_eur), ("value_currency", value_currency),
         ("value_original", value_original),
+        ("value_raw", value_raw),
         ("value_before_eur", value_before_eur),
         ("value_before_original", value_before_original),
         ("estimated_value_eur", estimated_value_eur),
@@ -358,18 +441,26 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("match_confidence", match_confidence),
         ("match_layer", match_layer),
         ("cpv", cpv), ("nuts", nuts), ("language", language),
+        ("notice_language", notice_language),
         ("country", country),
         ("procedure_type", procedure_type),
         ("tenders_received", tenders_received),
         ("award_criterion_type", award_criterion_type),
         ("submission_deadline", submission_deadline),
         ("is_framework", is_framework),
+        ("framework_id", framework_id),
+        ("framework_max_value_eur", framework_max_value_eur),
+        ("framework_reestimated_value_eur", framework_reestimated_value_eur),
+        ("framework_duration_months", framework_duration_months),
+        ("framework_max_operators", framework_max_operators),
         ("eu_funded", eu_funded),
         ("funding_programme", funding_programme),
         ("procedure_id", procedure_id),
         ("legacy_procedure_id", legacy_procedure_id),
+        ("tender_reference", tender_reference),
         ("notice_type", notice_type),
         ("notice_version", notice_version),
+        ("eforms_sdk", eforms_sdk),
         ("notice_kind", notice_kind),
         ("modifies_publication_number", modifies_publication_number),
         ("modifies_notice_id", modifies_notice_id),
@@ -378,6 +469,91 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("contract_key", contract_key),
         ("award_ingested", award_ingested),
         ("parties", parties),
+        ("suppliers_withheld", suppliers_withheld),
+    ):
+        if v is not None and v != "":
+            out[k] = v
+    if cleaning_rules is not None:
+        out["cleaning_rules"] = list(dict.fromkeys(cleaning_rules))
+    return out
+
+
+def framework_supplier(
+    *,
+    company_gmr_id: str,
+    lot: str | None = None,
+    rank: int | None = None,
+) -> dict[str, Any]:
+    """Build one item of UpsertFrameworkAgreement ``suppliers`` (v1).
+
+    One economic operator admitted to the framework (a PARTY_TO edge).
+    ``lot`` is the lot it is admitted for and ``rank`` its cbc:RankCode
+    in the lot's cascade; both drop out when unknown.
+    """
+    out: dict[str, Any] = {"company_gmr_id": company_gmr_id}
+    for k, v in (("lot", lot), ("rank", rank)):
+        if v is not None and v != "":
+            out[k] = v
+    return out
+
+
+def upsert_framework_agreement(  # pylint: disable=too-many-arguments,too-many-locals
+    *,
+    framework_id: str,
+    buyer_authority_id: str | None = None,
+    establishing_notice_id: str | None = None,
+    country: str | None = None,
+    ceiling_eur: float | None = None,
+    ceiling_currency: str | None = None,
+    ceiling_original: float | None = None,
+    reestimated_value_eur: float | None = None,
+    duration_start: str | None = None,
+    duration_end: str | None = None,
+    duration_months: int | None = None,
+    cpv: str | None = None,
+    lot_count: int | None = None,
+    supplier_count: int | None = None,
+    title: str | None = None,
+    suppliers: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build an UpsertFrameworkAgreement payload (v1).
+
+    A framework agreement as a first-class entity, keyed by the
+    procedure that established it: ``framework_id`` is the establishing
+    procedure's contract key (BT-04 ContractFolderID for eForms, the
+    establishing notice's publication number for legacy notices), so
+    the establishing notice, its corrections and every call-off
+    converge on one node. Call-offs point back at it through
+    ``upsert_contract(framework_id=...)``.
+
+    ``ceiling_eur`` (with ``ceiling_currency`` / ``ceiling_original``)
+    is capacity, not spend — no aggregate may sum it; call-off spend is
+    consumed against it. ``reestimated_value_eur`` is the buyer's later
+    expectation of what will actually be called off. ``suppliers`` is
+    every operator admitted to the framework — build items with
+    ``framework_supplier`` — and ``supplier_count`` the number the
+    notice published, which may exceed it when the cleaning stage
+    withheld some. ``buyer_authority_id`` is the establishing
+    authority; ``establishing_notice_id`` and ``country`` are its
+    provenance.
+    """
+    out: dict[str, Any] = {"framework_id": framework_id}
+    for k, v in (
+        ("buyer_authority_id", buyer_authority_id),
+        ("establishing_notice_id", establishing_notice_id),
+        ("country", country),
+        ("ceiling_eur", ceiling_eur),
+        ("ceiling_currency", ceiling_currency),
+        ("ceiling_original", ceiling_original),
+        ("reestimated_value_eur", reestimated_value_eur),
+        ("duration_start", duration_start),
+        ("duration_end", duration_end),
+        ("duration_months", duration_months),
+        ("cpv", cpv),
+        ("lot_count", lot_count),
+        ("supplier_count", supplier_count),
+        ("title", title),
+        ("suppliers", suppliers),
     ):
         if v is not None and v != "":
             out[k] = v

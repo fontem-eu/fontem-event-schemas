@@ -51,6 +51,7 @@ _EVENT_TYPE_CATEGORY: dict[str, str] = {
     "UpsertFiling":           "entities",
     "UpsertAuthority":        "entities",
     "UpsertContract":         "entities",
+    "UpsertFrameworkAgreement": "entities",
     "UpsertTaxonomyCode":     "entities",
     "UpsertRelationship":     "entities",
     "UpsertDisclosure":       "entities",
