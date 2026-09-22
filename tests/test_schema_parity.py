@@ -71,6 +71,38 @@ def test_contract_party_builder_covers_every_party_field() -> None:
     assert party_fields == helper_kwargs
 
 
+def test_withheld_supplier_builder_covers_every_item_field() -> None:
+    withheld_schema = (
+        load_schema("UpsertContract", 1)["properties"]["suppliers_withheld"]
+    )
+    item_fields = set(withheld_schema["items"]["properties"])
+    helper_kwargs = set(
+        inspect.signature(builders.withheld_supplier).parameters
+    )
+    assert item_fields == helper_kwargs
+
+
+def test_upsert_framework_agreement_builder_covers_every_schema_field() -> None:
+    schema_fields = set(
+        load_schema("UpsertFrameworkAgreement", 1)["properties"]
+    )
+    builder_kwargs = set(
+        inspect.signature(builders.upsert_framework_agreement).parameters
+    )
+    assert schema_fields == builder_kwargs
+
+
+def test_framework_supplier_builder_covers_every_item_field() -> None:
+    supplier_schema = (
+        load_schema("UpsertFrameworkAgreement", 1)["properties"]["suppliers"]
+    )
+    item_fields = set(supplier_schema["items"]["properties"])
+    helper_kwargs = set(
+        inspect.signature(builders.framework_supplier).parameters
+    )
+    assert item_fields == helper_kwargs
+
+
 def test_loaded_schema_matches_root_tree() -> None:
     """Whatever tree the loader picked, it parses to the same document
     as the reviewable root copy."""

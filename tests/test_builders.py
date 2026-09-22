@@ -5,7 +5,10 @@ itself — that it threads the new value-quality fields through, drops
 None/empty, and that its output validates against the schema (including
 the bool fields, which must survive even when False).
 """
+import pytest
+
 from fontem_event_schemas import builders, validate
+from fontem_event_schemas.validate import EventValidationError
 
 
 def test_upsert_contract_threads_value_quality_fields():
@@ -415,3 +418,244 @@ def test_upsert_contract_back_link_as_notice_id_and_legacy_reference():
     assert p["modifies_notice_id"] == "a64a67f4-a562-4014-ae25-232da2f4fa1c"
     assert p["legacy_procedure_id"] == "EKR001152382021"
     validate("UpsertContract", 1, p)
+
+
+# ── cleaning stage (data-backlog Part 5) ──────────────────────────────────
+
+_IT_JUNK_NAME = (
+    "Gara aggiudicata come da determina n. 543 del 2013 pubblicata sul "
+    "sito www.csc.sanita.fvg.it"
+)
+
+
+def test_withheld_supplier_drops_only_org_id():
+    """org_id is the one optional key; None and "" both mean 'legacy
+    notice, no org id' and must not be emitted as null."""
+    item = builders.withheld_supplier(
+        name_raw=_IT_JUNK_NAME, reason="it.notice_text_in_supplier_name",
+        role="winner",
+    )
+    assert item == {
+        "name_raw": _IT_JUNK_NAME,
+        "reason": "it.notice_text_in_supplier_name",
+        "role": "winner",
+    }
+    assert "org_id" not in builders.withheld_supplier(
+        name_raw="x", reason="r", role="winner", org_id="")
+    assert builders.withheld_supplier(
+        name_raw="x", reason="r", role="winner", org_id="ORG-0002",
+    )["org_id"] == "ORG-0002"
+
+
+def test_upsert_contract_threads_cleaning_stage_fields():
+    """The cleaner never rewrites silently: the raw values stay on the
+    event, the rules that fired are named, and a supplier it refused
+    to turn into an entity is kept as text outside parties. All of it
+    must reach the payload verbatim and validate."""
+    withheld = builders.withheld_supplier(
+        name_raw=_IT_JUNK_NAME, reason="it.notice_text_in_supplier_name",
+        role="winner", org_id="ORG-0002",
+    )
+    p = builders.upsert_contract(
+        ted_notice_id="184512-2013",
+        suppliers_withheld=[withheld],
+        cleaning_rules=["it.notice_text_in_supplier_name"],
+        award_date_raw="2013-05-28",
+        tender_result_award_date_raw="2000-01-01",
+        tender_reference="0.0",
+        notice_language="ITA",
+        eforms_sdk="eforms-sdk-1.14",
+        value_raw="24474133 EUR",
+        value_quarantined=True,
+        value_quarantine_reason="ambiguous_scale_x100_or_x1000",
+    )
+    assert p["suppliers_withheld"] == [withheld]
+    assert "parties" not in p           # withheld => not a party
+    assert "company_gmr_id" not in p    # ... and no company for it
+    assert p["cleaning_rules"] == ["it.notice_text_in_supplier_name"]
+    assert p["award_date_raw"] == "2013-05-28"
+    assert p["tender_result_award_date_raw"] == "2000-01-01"
+    assert p["tender_reference"] == "0.0"
+    assert p["notice_language"] == "ITA"
+    assert p["eforms_sdk"] == "eforms-sdk-1.14"
+    assert p["value_raw"] == "24474133 EUR"
+    assert p["value_quarantine_reason"] == "ambiguous_scale_x100_or_x1000"
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_omits_unset_cleaning_stage_fields():
+    p = builders.upsert_contract(ted_notice_id="minimal")
+    for k in (
+        "suppliers_withheld", "cleaning_rules", "award_date_raw",
+        "tender_result_award_date_raw", "tender_reference",
+        "notice_language", "eforms_sdk", "value_raw",
+    ):
+        assert k not in p
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_cleaning_rules_keep_order_and_collapse_repeats():
+    """A rule that fires once per lot is still one rule on the notice;
+    an empty list is a meaningful fact (cleaned, nothing fired) and
+    must survive, unlike None."""
+    p = builders.upsert_contract(
+        ted_notice_id="n",
+        cleaning_rules=["b.rule", "a.rule", "b.rule"],
+    )
+    assert p["cleaning_rules"] == ["b.rule", "a.rule"]
+    assert builders.upsert_contract(
+        ted_notice_id="n", cleaning_rules=[])["cleaning_rules"] == []
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_value_raw_zero_survives():
+    """A published '0' is non-disclosure, not absence: the string "0"
+    is not "" and must be kept verbatim."""
+    p = builders.upsert_contract(ted_notice_id="n", value_raw="0")
+    assert p["value_raw"] == "0"
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_suppliers_withheld_rejects_unknown_key():
+    """items.additionalProperties is false: a producer that slips a
+    resolved company id onto a withheld supplier would recreate the
+    junk node through the sink's MATCH."""
+    p = builders.upsert_contract(
+        ted_notice_id="n",
+        suppliers_withheld=[{
+            "name_raw": _IT_JUNK_NAME, "reason": "r", "role": "winner",
+            "company_gmr_id": "00040372-dad6-5d34-882c-8b8624b4e734",
+        }],
+    )
+    with pytest.raises(EventValidationError):
+        validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_suppliers_withheld_requires_reason_and_role():
+    for item in (
+        {"name_raw": _IT_JUNK_NAME, "role": "winner"},               # no reason
+        {"name_raw": _IT_JUNK_NAME, "reason": "r"},                  # no role
+        {"name_raw": _IT_JUNK_NAME, "reason": "r", "role": "buyer"},  # bad role
+        {"name_raw": "", "reason": "r", "role": "winner"},           # empty name
+    ):
+        p = builders.upsert_contract(ted_notice_id="n", suppliers_withheld=[item])
+        with pytest.raises(EventValidationError):
+            validate("UpsertContract", 1, p)
+
+
+# ── framework agreements (C6) ─────────────────────────────────────────────
+
+_FW_ID = "afc0e4f6-c140-435b-8f60-b1bf37e6860e"
+
+
+def test_upsert_contract_establishing_notice_carries_framework_facts():
+    p = builders.upsert_contract(
+        ted_notice_id="fw-establish",
+        is_framework=True,
+        contract_key=_FW_ID,
+        framework_max_value_eur=4_000_000.0,
+        framework_reestimated_value_eur=2_750_000.0,
+        framework_duration_months=48,
+        framework_max_operators=3,
+    )
+    assert p["is_framework"] is True
+    assert p["framework_max_value_eur"] == 4_000_000.0
+    assert p["framework_reestimated_value_eur"] == 2_750_000.0
+    assert p["framework_duration_months"] == 48
+    assert p["framework_max_operators"] == 3
+    assert "framework_id" not in p   # the establishing notice IS the framework
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_call_off_links_to_its_framework():
+    p = builders.upsert_contract(
+        ted_notice_id="fw-call-off", is_framework=False, framework_id=_FW_ID,
+    )
+    assert p["is_framework"] is False
+    assert p["framework_id"] == _FW_ID
+    for k in ("framework_max_value_eur", "framework_reestimated_value_eur",
+              "framework_duration_months", "framework_max_operators"):
+        assert k not in p
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_rejects_negative_framework_counts():
+    for kw in ({"framework_duration_months": -1},
+               {"framework_max_operators": -1}):
+        p = builders.upsert_contract(ted_notice_id="n", **kw)
+        with pytest.raises(EventValidationError):
+            validate("UpsertContract", 1, p)
+
+
+def test_framework_supplier_drops_unset_lot_and_rank():
+    assert builders.framework_supplier(
+        company_gmr_id="g") == {"company_gmr_id": "g"}
+    assert builders.framework_supplier(
+        company_gmr_id="g", lot="", rank=None) == {"company_gmr_id": "g"}
+    assert builders.framework_supplier(
+        company_gmr_id="g", lot="LOT-0001", rank=2,
+    ) == {"company_gmr_id": "g", "lot": "LOT-0001", "rank": 2}
+
+
+def test_upsert_framework_agreement_threads_every_field():
+    suppliers = [
+        builders.framework_supplier(
+            company_gmr_id="00040372-dad6-5d34-882c-8b8624b4e734",
+            lot="LOT-0001", rank=1),
+        builders.framework_supplier(
+            company_gmr_id="11111111-2222-5333-8444-666666666666",
+            lot="LOT-0002"),
+    ]
+    p = builders.upsert_framework_agreement(
+        framework_id=_FW_ID,
+        buyer_authority_id="11111111-2222-5333-8444-555555555555",
+        establishing_notice_id="7c1e2d3f-4a5b-4c6d-8e7f-90a1b2c3d4e5",
+        country="PRT",
+        ceiling_eur=4_000_000.0,
+        ceiling_currency="EUR",
+        ceiling_original=4_000_000.0,
+        reestimated_value_eur=2_750_000.0,
+        duration_start="2025-01-01",
+        duration_end="2028-12-31",
+        duration_months=48,
+        cpv="30190000",
+        lot_count=2,
+        supplier_count=3,
+        title="Acordo-quadro",
+        suppliers=suppliers,
+    )
+    assert p["framework_id"] == _FW_ID
+    assert p["ceiling_eur"] == 4_000_000.0
+    assert p["reestimated_value_eur"] == 2_750_000.0
+    assert p["duration_months"] == 48
+    assert p["lot_count"] == 2
+    assert p["supplier_count"] == 3      # published count may exceed ...
+    assert len(p["suppliers"]) == 2      # ... the resolved set
+    assert p["suppliers"] == suppliers
+    validate("UpsertFrameworkAgreement", 1, p)
+
+
+def test_upsert_framework_agreement_minimal_and_omits_unset():
+    p = builders.upsert_framework_agreement(framework_id=_FW_ID, title="")
+    assert p == {"framework_id": _FW_ID}
+    validate("UpsertFrameworkAgreement", 1, p)
+
+
+def test_upsert_framework_agreement_rejects_unknown_and_malformed():
+    with pytest.raises(EventValidationError):
+        validate("UpsertFrameworkAgreement", 1, {})            # no id
+    with pytest.raises(EventValidationError):
+        validate("UpsertFrameworkAgreement", 1,
+                 {"framework_id": _FW_ID, "value_eur": 1.0})   # not a contract
+    with pytest.raises(EventValidationError):
+        validate("UpsertFrameworkAgreement", 1, {
+            "framework_id": _FW_ID,
+            "suppliers": [{"company_gmr_id": "g", "name": "ACME"}],
+        })                                                     # stray item key
+    with pytest.raises(EventValidationError):
+        validate("UpsertFrameworkAgreement", 1, {
+            "framework_id": _FW_ID, "suppliers": [{"lot": "LOT-0001"}],
+        })                                                     # id required
+    with pytest.raises(EventValidationError):
+        validate("UpsertFrameworkAgreement", 1,
+                 {"framework_id": _FW_ID, "lot_count": -1})

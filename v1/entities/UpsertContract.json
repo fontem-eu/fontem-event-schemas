@@ -49,6 +49,20 @@
       ],
       "format": "date"
     },
+    "award_date_raw": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The contract's award/conclusion date exactly as published (legacy DATE_CONCLUSION_CONTRACT; eForms efac:SettledContract/cbc:AwardDate, BT-145), before the date sanity rules. Placeholder dates ('2000-01-01', '1900-01-01') are discarded from the typed fields but persisted here, so the gateway-watermark census can run from the graph instead of a rescan of the mirrored XML."
+    },
+    "tender_result_award_date_raw": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The lot result's winner-decision date exactly as published (eForms BT-1451 cac:TenderResult/cbc:AwardDate), before the date sanity rules. Many eSenders, across countries, write the placeholder '2000-01-01' here when they fill only the contract-level date; it identifies a submitting-software family, not a country or a defect. A placeholder lowers the evidence bar for a scale correction but is a prior, not proof — most notices carrying it have a sound value."
+    },
     "value_eur": {
       "type": [
         "number",
@@ -69,6 +83,13 @@
         "null"
       ],
       "description": "Chosen awarded value in the original currency."
+    },
+    "value_raw": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The award amount exactly as published, verbatim text with its currency (e.g. '24474133 EUR', '1152393.38 EUR'), before scale correction, FX conversion or quarantine. The cleaning stage keeps it so a rescaled or withheld value can always be compared with what the buyer actually wrote; value_eur is the platform's reading of it. A published '0' is kept as '0' (non-disclosure, not absence)."
     },
     "value_before_eur": {
       "type": [
@@ -191,7 +212,7 @@
         "string",
         "null"
       ],
-      "description": "Why the value was withheld: implausible_magnitude | concession_negative | unverified_single_signal (review-queued) or zero_value (auto: a published 0 is non-disclosure)."
+      "description": "Why the value was withheld: implausible_magnitude | concession_negative | unverified_single_signal (review-queued), zero_value (auto: a published 0 is non-disclosure), or a cleaning-stage rule id such as ambiguous_scale_x100_or_x1000 (the amount is implausible against its CPV × country peers but the correction is undecidable — e.g. EUR 24,474,133 that reads as either /100 or /1000; see value_raw for the published text)."
     },
     "cpv": {
       "type": [
@@ -213,6 +234,13 @@
         "null"
       ],
       "description": "Notice language code."
+    },
+    "notice_language": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The notice's declared language exactly as published (eForms BT-702 cbc:NoticeLanguageCode, e.g. 'POR'; legacy LG attribute, e.g. 'PT'), before normalisation to `language`. Country- and language-specific cleaning rules key on it, so it is kept verbatim on the event for re-runs."
     },
     "country": {
       "type": [
@@ -242,6 +270,13 @@
       ],
       "description": "Pre-eForms only: the reference number the contracting authority gave the procedure (S-form II.1.1 REFERENCE_NUMBER). Kept and indexed for querying; never the contract key (the publication number is, for legacy notices)."
     },
+    "tender_reference": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The winning tender's identifier exactly as published (eForms BT-3201 efac:LotTender/efac:TenderReference/cbc:ID; the legacy file reference where one exists). Persisted verbatim because one gateway family sets it to the placeholder '0.0' — the second half of a watermark pair with tender_result_award_date_raw, whose reach across countries the census will establish."
+    },
     "notice_type": {
       "type": [
         "string",
@@ -255,6 +290,13 @@
         "null"
       ],
       "description": "eForms notice version (BT-757 root cbc:VersionID, e.g. '01', '02'). With ted_notice_id it names one published version of a notice, which is the unit the loader skips on: a notice already ingested at this version is not re-emitted."
+    },
+    "eforms_sdk": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The eForms SDK the notice was authored against (root cbc:CustomizationID, e.g. 'eforms-sdk-1.14'). Null on legacy TED_EXPORT notices. Cleaning rules are gateway- and SDK-specific; this is the version they scope on, and — since nothing in the XML marks the monetary scale — the only clue to which gateway release produced a notice."
     },
     "modifies_publication_number": {
       "type": [
@@ -304,6 +346,43 @@
         "null"
       ],
       "description": "True when the notice sets up a framework agreement (excluded from some single-bidder denominators)."
+    },
+    "framework_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "On a CALL-OFF contract: the framework agreement it draws from, named by the establishing procedure's contract key (BT-04 ContractFolderID for eForms; the establishing notice's publication number for legacy notices) — the same value as UpsertFrameworkAgreement.framework_id. Sinks materialise CALL_OFF_OF from it. Strong link = the call-off shares the establishing procedure's ContractFolderID; fallback = its cac:NoticeDocumentReference to the framework notice. Absent where TED publishes no link (common): the call-off stays unattached and still counts as spend — it is the ceiling that must never be summed."
+    },
+    "framework_max_value_eur": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "On the ESTABLISHING contract (is_framework true): the framework's maximum value in EUR (eForms BT-118 efbc:OverallMaximumFrameworkContractsAmount, or BT-709 per lot). Capacity, never spend: framework-establishing contracts never enter spend sums, and this is what call-off values are consumed against ('EUR X of a EUR Y ceiling across N call-offs')."
+    },
+    "framework_reestimated_value_eur": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "On the ESTABLISHING contract: the framework's re-estimated value in EUR (eForms BT-660 efac:FrameworkAgreementValues/efbc:ReestimatedValueAmount) — the buyer's later expectation of what will actually be called off, distinct from the ceiling."
+    },
+    "framework_duration_months": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "On the ESTABLISHING contract: the framework's duration in months (eForms BT-36 cac:PlannedPeriod/cbc:DurationMeasure normalised to months; legacy II.2.7). Bounds the call-off window."
+    },
+    "framework_max_operators": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "On the ESTABLISHING contract: the maximum number of economic operators the framework admits (eForms BT-113 cac:FrameworkAgreement/cbc:MaximumOperatorQuantity). Multi-supplier is the normal case; every admitted operator is a PARTY_TO of the framework, and winning a call-off is a separate fact."
     },
     "eu_funded": {
       "type": [
@@ -436,6 +515,60 @@
         },
         "additionalProperties": false
       }
+    },
+    "suppliers_withheld": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Suppliers the cleaning stage refused to turn into entities: the name field held a sentence, a placeholder or other non-name text. Each one is NOT in parties and no company exists for it — the sink MATCHes both ends of AWARDED_TO, so a dangling reference would re-create the junk node. The raw text stays here as a pointer (it often names the decree, or the site where the real award is published); the award's value, buyer, CPV and dates are kept on the contract as usual. The real name is not in the notice, so nothing here is ever invented — later recovery is a national-source job (ANAC, BASE).",
+      "items": {
+        "type": "object",
+        "required": [
+          "name_raw",
+          "reason",
+          "role"
+        ],
+        "properties": {
+          "name_raw": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The supplier name field verbatim, as published."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The cleaning rule id that withheld the entity, e.g. it.notice_text_in_supplier_name. Also present in the notice's cleaning_rules."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "winner",
+              "named_tenderer"
+            ],
+            "description": "The role the supplier would have had in parties: winner (referenced by a selec-w LotResult, or legacy CONTRACTOR/ECONOMIC_OPERATOR) or named_tenderer (named in the notice but not in a winning result)."
+          },
+          "org_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The notice's own organisation id for this supplier (eForms efac:Organization/efac:Company/cac:PartyIdentification/cbc:ID, e.g. 'ORG-0002'), so the withheld supplier can be found in the notice XML again. Null on legacy notices."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cleaning_rules": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Ids of every cleaning rule that fired on this notice (e.g. it.notice_text_in_supplier_name), in the order they fired, each id once. The cleaner never rewrites silently: the raw value stays on the event, the rule is named here, and the DQ dashboard's per-rule counters are computed from this list. Absent when the notice was not cleaned; empty when it was and nothing fired."
     },
     "value_scale_corrected": {
       "type": [

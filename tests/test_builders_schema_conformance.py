@@ -49,6 +49,8 @@ _CASES = [
     ("RetractSameAs", builders.retract_same_as,
      {"a_iri": "urn:a", "b_iri": "urn:b",
       "reason": "different registration numbers"}),
+    ("UpsertFrameworkAgreement", builders.upsert_framework_agreement,
+     {"framework_id": "afc0e4f6-c140-435b-8f60-b1bf37e6860e"}),
 ]
 
 
