@@ -241,7 +241,10 @@ def contract_party(
 # suffix, which differs between two notices of the SAME framework.
 # Normalising here rather than in each producer keeps every producer on
 # one key.
-_PUBLICATION_NUMBER = re.compile(r"^0*(\d+)-(\d{4})$")
+# No `0*` prefix in front of the `\d+`: the two are ambiguous and
+# backtrack polynomially on a long run of zeros (SonarQube S5852), and
+# int() below drops the padding anyway.
+_PUBLICATION_NUMBER = re.compile(r"^(\d+)-(\d{4})$")
 _UUID_WITH_VERSION = re.compile(
     r"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"
     r"-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})-\d{2}$"
