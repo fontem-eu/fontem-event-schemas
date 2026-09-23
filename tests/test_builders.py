@@ -546,36 +546,108 @@ def test_upsert_contract_suppliers_withheld_requires_reason_and_role():
 # ── framework agreements (C6) ─────────────────────────────────────────────
 
 _FW_ID = "afc0e4f6-c140-435b-8f60-b1bf37e6860e"
+# The publication-number value form, verified by hand on real XML:
+# notices 761784-2024 and 3406-2025 both carry this OPT-100 key.
+_FW_PUB = "536632-2024"
 
 
-def test_upsert_contract_establishing_notice_carries_framework_facts():
+def test_upsert_contract_carries_the_framework_terms_it_publishes():
+    """A notice that publishes the framework's terms carries them
+    alongside the OPT-100 key. It may be the notice that established
+    the framework or a call-off under it — both carry is_framework and
+    the identical key, and nothing in the data tells them apart."""
     p = builders.upsert_contract(
-        ted_notice_id="fw-establish",
+        ted_notice_id="fw-terms",
         is_framework=True,
         contract_key=_FW_ID,
+        framework_id=_FW_PUB,
+        framework_id_source="opt-100",
         framework_max_value_eur=4_000_000.0,
         framework_reestimated_value_eur=2_750_000.0,
         framework_duration_months=48,
         framework_max_operators=3,
     )
     assert p["is_framework"] is True
+    assert p["framework_id"] == _FW_PUB
+    assert p["framework_id_source"] == "opt-100"
     assert p["framework_max_value_eur"] == 4_000_000.0
     assert p["framework_reestimated_value_eur"] == 2_750_000.0
     assert p["framework_duration_months"] == 48
     assert p["framework_max_operators"] == 3
-    assert "framework_id" not in p   # the establishing notice IS the framework
     validate("UpsertContract", 1, p)
 
 
-def test_upsert_contract_call_off_links_to_its_framework():
-    p = builders.upsert_contract(
-        ted_notice_id="fw-call-off", is_framework=False, framework_id=_FW_ID,
+def test_framework_key_does_not_distinguish_establishment_from_call_off():
+    """Verified on real XML: notices 761784-2024 and 3406-2025 both
+    carry OPT-100 536632-2024. Whatever role a notice plays, the key is
+    the same value, so no consumer may read an ordering out of it."""
+    establishing = builders.upsert_contract(
+        ted_notice_id="761784-2024", is_framework=True,
+        framework_id=_FW_PUB, framework_id_source="opt-100",
+        framework_max_value_eur=4_000_000.0,
     )
-    assert p["is_framework"] is False
-    assert p["framework_id"] == _FW_ID
+    call_off = builders.upsert_contract(
+        ted_notice_id="3406-2025", is_framework=True,
+        framework_id=_FW_PUB, framework_id_source="opt-100",
+        value_eur=120_000.0,
+    )
+    assert establishing["framework_id"] == call_off["framework_id"]
     for k in ("framework_max_value_eur", "framework_reestimated_value_eur",
               "framework_duration_months", "framework_max_operators"):
-        assert k not in p
+        assert k not in call_off
+    validate("UpsertContract", 1, establishing)
+    validate("UpsertContract", 1, call_off)
+
+
+def test_framework_id_is_normalised_to_one_grouping_form():
+    """BT-125 publishes the same notice zero-padded, and the UUID form
+    carries a per-notice '-NN' version. Either spelling reaching the
+    log would split one framework into several groups, so the builder
+    normalises both on the way out."""
+    padded = builders.upsert_contract(
+        ted_notice_id="bt125", framework_id="00536632-2024",
+        framework_id_source="bt-125",
+    )
+    assert padded["framework_id"] == _FW_PUB
+    versioned = builders.upsert_contract(
+        ted_notice_id="uuid-form",
+        framework_id="45d7e260-cdfb-4ae3-a3d9-fdc8beea8b77-01",
+    )
+    assert versioned["framework_id"] == (
+        "45d7e260-cdfb-4ae3-a3d9-fdc8beea8b77")
+    # Idempotent, and an unexpected shape is left exactly as published:
+    # inventing a shape for it would group notices that do not belong
+    # together.
+    assert builders.normalise_framework_id(_FW_PUB) == _FW_PUB
+    assert builders.normalise_framework_id("FA-2024/17") == "FA-2024/17"
+    assert builders.normalise_framework_id(None) is None
+    validate("UpsertContract", 1, padded)
+    validate("UpsertContract", 1, versioned)
+
+
+def test_framework_agreement_normalises_the_same_key():
+    """Both ends of CALL_OFF_OF must land on the same node key."""
+    p = builders.upsert_framework_agreement(framework_id="00536632-2024")
+    assert p["framework_id"] == _FW_PUB
+    validate("UpsertFrameworkAgreement", 1, p)
+
+
+def test_upsert_contract_rejects_an_unknown_framework_id_source():
+    """opt-100 (strong) and bt-125 (fallback) are the two references the
+    parser reads; a third value would leave consumers unable to weigh
+    the link."""
+    p = builders.upsert_contract(
+        ted_notice_id="n", framework_id=_FW_PUB,
+        framework_id_source="same-folder",
+    )
+    with pytest.raises(EventValidationError):
+        validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_omits_unset_framework_fields():
+    p = builders.upsert_contract(ted_notice_id="no-framework-reference")
+    for k in ("framework_id", "framework_id_source"):
+        assert k not in p     # absent is unknown, never 'no framework'
     validate("UpsertContract", 1, p)
 
 
