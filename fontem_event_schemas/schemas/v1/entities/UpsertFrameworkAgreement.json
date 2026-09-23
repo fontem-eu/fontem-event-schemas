@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.fontem.eu/v1/entities/UpsertFrameworkAgreement.json",
   "title": "UpsertFrameworkAgreement",
-  "description": "A framework agreement as a first-class entity, keyed by the PROCEDURE that established it rather than by any one notice, so the establishing notice, its corrections and every call-off converge on one node — which the per-notice UpsertContract cannot do. Sinks materialise ESTABLISHED (Authority→FrameworkAgreement) from buyer_authority_id, PARTY_TO {lot, rank} (Company→FrameworkAgreement) from suppliers, and CALL_OFF_OF (Contract→FrameworkAgreement) from UpsertContract.framework_id. Aggregation rule: the ceiling is capacity, not spend — framework nodes never enter spend sums; call-off contracts do.",
+  "description": "A framework agreement as a first-class entity, keyed by the framework's own grouping key rather than by any one notice, so every award notice that belongs to the framework converges on one node — which the per-notice UpsertContract cannot do. Sinks materialise ESTABLISHED (Authority→FrameworkAgreement) from buyer_authority_id, PARTY_TO {lot, rank} (Company→FrameworkAgreement) from suppliers, and CALL_OFF_OF (Contract→FrameworkAgreement) from UpsertContract.framework_id. The ESTABLISHED / CALL_OFF_OF edge names are historical: nothing in the data tells the notice that set the framework up from one that draws on it, so a reader shows the cluster as 'part of a framework agreement' and never as establishment-then-call-offs. Aggregation rule: the ceiling is capacity, not spend — framework nodes never enter spend sums; contracts do.",
   "type": "object",
   "required": [
     "framework_id"
@@ -11,7 +11,7 @@
     "framework_id": {
       "type": "string",
       "minLength": 1,
-      "description": "Identity of the framework = the establishing procedure's contract key: BT-04 ContractFolderID for eForms, the establishing notice's publication number for legacy notices. Several notices about one framework share it; call-offs reference it as UpsertContract.framework_id."
+      "description": "Identity of the framework = the normalised eForms OPT-100 Framework Notice Identifier, the grouping key every award notice of the framework carries: a TED publication number with zero-padding stripped ('536632-2024') or an eForms notice UUID without its '-NN' version suffix. It is NOT the establishing procedure's contract key — OPT-100 names a notice in the same ContractFolderID only 53.5% of the time, a different folder 17.2%, and legacy targets have no folder at all. Contracts reference it as UpsertContract.framework_id; the notice it names is usually a call-for-competition this platform does not ingest, so it identifies the framework without resolving to a contract we hold."
     },
     "buyer_authority_id": {
       "type": [
@@ -19,14 +19,14 @@
         "null"
       ],
       "format": "uuid",
-      "description": "authority_id of the contracting authority (or central purchasing body) that established the framework. Sinks materialise ESTABLISHED from it."
+      "description": "authority_id of the contracting authority (or central purchasing body) on the notice this event was built from. Sinks materialise ESTABLISHED from it; the edge name is historical — the data does not confirm that this notice established the framework."
     },
     "establishing_notice_id": {
       "type": [
         "string",
         "null"
       ],
-      "description": "ted_notice_id of the notice that established the framework (the eForms notice UUID, or the legacy notice id) — provenance for the node; identity is framework_id."
+      "description": "ted_notice_id of the notice these terms were read from (the eForms notice UUID, or the legacy notice id) — provenance for the node; identity is framework_id. Despite the name it is not evidence of establishment: every award notice of a framework carries the same OPT-100 key and none of them says which one set the framework up."
     },
     "country": {
       "type": [
@@ -108,7 +108,7 @@
         "null"
       ],
       "minimum": 0,
-      "description": "Number of economic operators admitted to the framework as published (eForms: one SettledContract per framework supplier). May exceed the length of suppliers when some were withheld by the cleaning stage or not resolved."
+      "description": "Number of economic operators admitted to the framework as published by this notice (eForms: one SettledContract per framework supplier). May exceed the length of suppliers when some were withheld by the cleaning stage or not resolved."
     },
     "title": {
       "type": [

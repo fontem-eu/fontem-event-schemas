@@ -7,6 +7,7 @@ corresponding JSON Schema.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Mapping
 
 
@@ -230,6 +231,47 @@ def contract_party(
     return out
 
 
+# The OPT-100 Framework Notice Identifier is a GROUPING key: every award
+# notice of one framework carries the same value, so any difference in
+# spelling splits one framework into several. Two spellings do differ in
+# the wild. BT-125 publishes the publication number zero-padded
+# ('00536632-2024' for the notice TED's own framework-notice-id index
+# calls '536632-2024' — the padded form returns 0 results there), and the
+# UUID form carries the publishing notice's own version as a '-NN'
+# suffix, which differs between two notices of the SAME framework.
+# Normalising here rather than in each producer keeps every producer on
+# one key.
+# No `0*` prefix in front of the `\d+`: the two are ambiguous and
+# backtrack polynomially on a long run of zeros (SonarQube S5852), and
+# int() below drops the padding anyway.
+_PUBLICATION_NUMBER = re.compile(r"^(\d+)-(\d{4})$")
+_UUID_WITH_VERSION = re.compile(
+    r"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"
+    r"-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})-\d{2}$"
+)
+
+
+def normalise_framework_id(value: str | None) -> str | None:
+    """Return an OPT-100 Framework Notice Identifier in grouping form.
+
+    Unpads the publication number ('00536632-2024' -> '536632-2024')
+    and drops the '-NN' version suffix of the UUID form
+    ('45d7e260-...-8beea8b77-01' -> '45d7e260-...-8beea8b77'). Anything
+    that matches neither form is returned unchanged — the key is
+    whatever the notice published, and inventing a shape for an
+    unexpected value would group notices that do not belong together.
+    Idempotent, so a producer may call it on an already-normalised id.
+    """
+    if not value:
+        return value
+    v = value.strip()
+    if m := _PUBLICATION_NUMBER.match(v):
+        return f"{int(m.group(1))}-{m.group(2)}"
+    if m := _UUID_WITH_VERSION.match(v):
+        return m.group(1)
+    return v
+
+
 def withheld_supplier(
     *,
     name_raw: str,
@@ -300,6 +342,7 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     submission_deadline: str | None = None,
     is_framework: bool | None = None,
     framework_id: str | None = None,
+    framework_id_source: str | None = None,
     framework_max_value_eur: float | None = None,
     framework_reestimated_value_eur: float | None = None,
     framework_duration_months: int | None = None,
@@ -402,11 +445,25 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     ``language``); ``eforms_sdk`` (the ``CustomizationID``, e.g.
     ``eforms-sdk-1.14``, the version gateway-specific rules scope on).
 
-    Framework-agreement fields: on a CALL-OFF, ``framework_id`` names
-    the framework it draws from (the establishing procedure's contract
-    key, the same value as ``UpsertFrameworkAgreement.framework_id``)
-    and is absent when TED publishes no link. On the ESTABLISHING
-    contract (``is_framework`` true), ``framework_max_value_eur`` is
+    Framework-agreement fields. ``framework_id`` is the normalised
+    OPT-100 Framework Notice Identifier — the grouping key every award
+    notice of one framework carries, the establishing notice and every
+    call-off alike, so it never says which of the two a notice is.
+    ``normalise_framework_id`` is applied on the way out, so the
+    zero-padding a BT-125 reference publishes (``00536632-2024`` ->
+    ``536632-2024``, the form TED's own framework-notice-id index
+    matches) and the ``-NN`` version suffix of the UUID form never
+    split one framework into several groups. ~80% of the time it names a
+    call-for-competition notice, which this platform does not ingest,
+    so it is a key and not a reference to a contract we hold.
+    ``framework_id_source`` says which reference it was read from:
+    ``"opt-100"`` (efac:SettledContract — the strong signal) or
+    ``"bt-125"`` (cac:TenderingProcess — the general previous-notice
+    back-link, which may name a planning notice instead).
+    ``is_framework`` means the notice belongs to a framework procedure,
+    not that it established one: call-offs carry it too. The terms
+    below are what this notice published, with no claim about which
+    notice established the framework — ``framework_max_value_eur`` is
     the ceiling (BT-118 / BT-709 — capacity, never spend, so it must
     never enter a sum), ``framework_reestimated_value_eur`` the buyer's
     re-estimate (BT-660), ``framework_duration_months`` the validity
@@ -448,7 +505,8 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("award_criterion_type", award_criterion_type),
         ("submission_deadline", submission_deadline),
         ("is_framework", is_framework),
-        ("framework_id", framework_id),
+        ("framework_id", normalise_framework_id(framework_id)),
+        ("framework_id_source", framework_id_source),
         ("framework_max_value_eur", framework_max_value_eur),
         ("framework_reestimated_value_eur", framework_reestimated_value_eur),
         ("framework_duration_months", framework_duration_months),
@@ -519,12 +577,16 @@ def upsert_framework_agreement(  # pylint: disable=too-many-arguments,too-many-l
     """Build an UpsertFrameworkAgreement payload (v1).
 
     A framework agreement as a first-class entity, keyed by the
-    procedure that established it: ``framework_id`` is the establishing
-    procedure's contract key (BT-04 ContractFolderID for eForms, the
-    establishing notice's publication number for legacy notices), so
-    the establishing notice, its corrections and every call-off
-    converge on one node. Call-offs point back at it through
-    ``upsert_contract(framework_id=...)``.
+    framework's own grouping key: ``framework_id`` is the normalised
+    OPT-100 Framework Notice Identifier (an unpadded publication
+    number, or the UUID form without its ``-NN`` version suffix), which
+    every award notice of the framework carries, so they all converge
+    on one node. It is NOT the establishing procedure's contract key:
+    OPT-100 names a notice in the same ContractFolderID only 53.5% of
+    the time, a different folder 17.2%, and legacy targets have no
+    folder at all. It is passed through ``normalise_framework_id``, as
+    on the contract side, so both ends of CALL_OFF_OF agree. Contracts
+    point back at it through ``upsert_contract(framework_id=...)``.
 
     ``ceiling_eur`` (with ``ceiling_currency`` / ``ceiling_original``)
     is capacity, not spend — no aggregate may sum it; call-off spend is
@@ -533,11 +595,15 @@ def upsert_framework_agreement(  # pylint: disable=too-many-arguments,too-many-l
     every operator admitted to the framework — build items with
     ``framework_supplier`` — and ``supplier_count`` the number the
     notice published, which may exceed it when the cleaning stage
-    withheld some. ``buyer_authority_id`` is the establishing
-    authority; ``establishing_notice_id`` and ``country`` are its
-    provenance.
+    withheld some. ``buyer_authority_id``, ``establishing_notice_id``
+    and ``country`` are provenance — the authority and the notice this
+    event was built from, not proof that that notice established the
+    framework; nothing in the data tells an establishment from a
+    call-off.
     """
-    out: dict[str, Any] = {"framework_id": framework_id}
+    out: dict[str, Any] = {
+        "framework_id": normalise_framework_id(framework_id),
+    }
     for k, v in (
         ("buyer_authority_id", buyer_authority_id),
         ("establishing_notice_id", establishing_notice_id),

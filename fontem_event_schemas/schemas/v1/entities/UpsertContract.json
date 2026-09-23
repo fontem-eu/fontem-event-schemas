@@ -345,28 +345,40 @@
         "boolean",
         "null"
       ],
-      "description": "True when the notice sets up a framework agreement (excluded from some single-bidder denominators)."
+      "description": "True when the notice belongs to a framework-agreement procedure: the lot's cbc:ContractingSystemTypeCode[@listName='framework-agreement'] starts with 'fa'. It does NOT mean this notice established the framework — 344 of 351 confirmed call-off notices carry it too, and nothing in the data tells an establishment from a call-off. Excluded from some single-bidder denominators."
     },
     "framework_id": {
       "type": [
         "string",
         "null"
       ],
-      "description": "On a CALL-OFF contract: the framework agreement it draws from, named by the establishing procedure's contract key (BT-04 ContractFolderID for eForms; the establishing notice's publication number for legacy notices) — the same value as UpsertFrameworkAgreement.framework_id. Sinks materialise CALL_OFF_OF from it. Strong link = the call-off shares the establishing procedure's ContractFolderID; fallback = its cac:NoticeDocumentReference to the framework notice. Absent where TED publishes no link (common): the call-off stays unattached and still counts as spend — it is the ceiling that must never be summed."
+      "description": "The normalised eForms OPT-100 Framework Notice Identifier (efac:NoticeResult/efac:SettledContract/cac:NoticeDocumentReference/cbc:ID): the grouping key every award notice belonging to the same framework agreement carries — the same value as UpsertFrameworkAgreement.framework_id. Two value forms, both normalised by builders.normalise_framework_id before emit (a difference in spelling splits one framework into several groups): a TED publication number with zero-padding stripped ('536632-2024'; TED's own framework-notice-id index matches '536632-2024' and returns nothing for the '00536632-2024' BT-125 publishes), or an eForms notice UUID without its '-NN' version suffix. It is a KEY, not a reference to a contract we hold: ~80% of the time it names a call-for-competition notice, which this platform does not ingest (prod holds award + modification notices only), so it resolves to an ingested :Contract about 13.6% of the time. Sinks materialise CALL_OFF_OF (Contract→FrameworkAgreement) from it — the FrameworkAgreement node is keyed by this same value, so the edge groups notices and never points at another :Contract. Establishment and call-off carry the identical value, so the key can never order the cluster into establishment-then-call-offs; readers say 'part of a framework agreement'. Absent on pre-2024 notices, which carry no such reference at all — absence is unknown, never 'not part of a framework'."
+    },
+    "framework_id_source": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "opt-100",
+        "bt-125",
+        null
+      ],
+      "description": "Which reference framework_id was read from, so a consumer can weigh the link. 'opt-100' = the OPT-100 Framework Notice Identifier on efac:SettledContract — the strong signal, carried by 89.4% of 2025 and 98.3% of 2026 framework-flagged award notices. 'bt-125' = the fallback previous-notice reference (cac:TenderingProcess/cac:NoticeDocumentReference), weaker because BT-125 is the general back-link and may name a planning or other prior notice rather than the framework; it is also the form that publishes the publication number zero-padded (BT-125 '00536632-2024' for OPT-100 '536632-2024'), which builders.normalise_framework_id strips before emit. Absent when framework_id is absent."
     },
     "framework_max_value_eur": {
       "type": [
         "number",
         "null"
       ],
-      "description": "On the ESTABLISHING contract (is_framework true): the framework's maximum value in EUR (eForms BT-118 efbc:OverallMaximumFrameworkContractsAmount, or BT-709 per lot). Capacity, never spend: framework-establishing contracts never enter spend sums, and this is what call-off values are consumed against ('EUR X of a EUR Y ceiling across N call-offs')."
+      "description": "The framework's maximum value in EUR (eForms BT-118 efbc:OverallMaximumFrameworkContractsAmount, or BT-709 per lot), as published by this notice. Published by whichever notice of the framework publishes the terms — usually but not provably the one that established it, since nothing in the data marks which notice that was; is_framework does not mark it either. Capacity, never spend: the ceiling is what contract values are consumed against ('EUR X of a EUR Y ceiling across N notices') and must never be summed into a spend figure."
     },
     "framework_reestimated_value_eur": {
       "type": [
         "number",
         "null"
       ],
-      "description": "On the ESTABLISHING contract: the framework's re-estimated value in EUR (eForms BT-660 efac:FrameworkAgreementValues/efbc:ReestimatedValueAmount) — the buyer's later expectation of what will actually be called off, distinct from the ceiling."
+      "description": "The framework's re-estimated value in EUR (eForms BT-660 efac:FrameworkAgreementValues/efbc:ReestimatedValueAmount) as published by this notice (see framework_max_value_eur on which notice that is) — the buyer's later expectation of what will actually be called off, distinct from the ceiling. Also capacity, not money paid: never summed into spend."
     },
     "framework_duration_months": {
       "type": [
@@ -374,7 +386,7 @@
         "null"
       ],
       "minimum": 0,
-      "description": "On the ESTABLISHING contract: the framework's duration in months (eForms BT-36 cac:PlannedPeriod/cbc:DurationMeasure normalised to months; legacy II.2.7). Bounds the call-off window."
+      "description": "The framework's duration in months (eForms BT-36 cac:PlannedPeriod/cbc:DurationMeasure normalised to months; legacy II.2.7) as published by this notice (see framework_max_value_eur on which notice that is). Bounds the window in which call-offs may be made."
     },
     "framework_max_operators": {
       "type": [
@@ -382,7 +394,7 @@
         "null"
       ],
       "minimum": 0,
-      "description": "On the ESTABLISHING contract: the maximum number of economic operators the framework admits (eForms BT-113 cac:FrameworkAgreement/cbc:MaximumOperatorQuantity). Multi-supplier is the normal case; every admitted operator is a PARTY_TO of the framework, and winning a call-off is a separate fact."
+      "description": "The maximum number of economic operators the framework admits (eForms BT-113 cac:FrameworkAgreement/cbc:MaximumOperatorQuantity) as published by this notice (see framework_max_value_eur on which notice that is). Multi-supplier is the normal case; every admitted operator is a PARTY_TO of the framework, and winning a call-off is a separate fact."
     },
     "eu_funded": {
       "type": [
