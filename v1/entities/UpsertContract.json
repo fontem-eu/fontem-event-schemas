@@ -26,6 +26,14 @@
         "null"
       ]
     },
+    "title_lang": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z]{2}$",
+      "description": "ISO 639-1 language of `title`, read from the notice (eForms title languageID or NoticeLanguageCode; legacy form LG or LG_ORIG). Never inferred from the buyer's country; absent when the notice gives no recognisable code."
+    },
     "authority_id": {
       "type": [
         "string",
