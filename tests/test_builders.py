@@ -731,3 +731,26 @@ def test_upsert_framework_agreement_rejects_unknown_and_malformed():
     with pytest.raises(EventValidationError):
         validate("UpsertFrameworkAgreement", 1,
                  {"framework_id": _FW_ID, "lot_count": -1})
+
+
+def test_upsert_contract_carries_the_title_language():
+    """The notice's own word for the title's language, ISO 639-1."""
+    p = builders.upsert_contract(ted_notice_id="324264-2024",
+                                 title="lavori di manutenzione", title_lang="it")
+    assert p["title_lang"] == "it"
+    validate("UpsertContract", 1, p)
+
+
+def test_upsert_contract_omits_an_unknown_title_language():
+    """No recognisable code on the notice means no claim on the payload."""
+    p = builders.upsert_contract(ted_notice_id="n", title="t", title_lang=None)
+    assert "title_lang" not in p
+    validate("UpsertContract", 1, p)
+
+
+@pytest.mark.parametrize("bad", ["ITA", "HU", "english", "e"])
+def test_upsert_contract_rejects_a_title_language_that_is_not_iso_639_1(bad):
+    """Verbatim TED codes must be normalised before they reach the log."""
+    p = builders.upsert_contract(ted_notice_id="n", title="t", title_lang=bad)
+    with pytest.raises(EventValidationError):
+        validate("UpsertContract", 1, p)

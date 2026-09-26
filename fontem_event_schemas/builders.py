@@ -306,6 +306,7 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     ted_notice_id: str,
     ted_publication_number: str | None = None,
     title: str | None = None,
+    title_lang: str | None = None,
     authority_id: str | None = None,
     company_gmr_id: str | None = None,
     publication_date: str | None = None,
@@ -473,7 +474,8 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     out: dict[str, Any] = {"ted_notice_id": ted_notice_id}
     for k, v in (
         ("ted_publication_number", ted_publication_number),
-        ("title", title), ("authority_id", authority_id),
+        ("title", title), ("title_lang", title_lang),
+        ("authority_id", authority_id),
         ("company_gmr_id", company_gmr_id),
         ("publication_date", publication_date),
         ("award_date_raw", award_date_raw),
