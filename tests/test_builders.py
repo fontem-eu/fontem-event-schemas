@@ -754,3 +754,18 @@ def test_upsert_contract_rejects_a_title_language_that_is_not_iso_639_1(bad):
     p = builders.upsert_contract(ted_notice_id="n", title="t", title_lang=bad)
     with pytest.raises(EventValidationError):
         validate("UpsertContract", 1, p)
+
+
+def test_upsert_disclosure_carries_a_stated_title_language():
+    """Kohesio's English-name column states its language; the payload says so."""
+    p = builders.upsert_disclosure(system="eu-cohesion", disclosure_id="Q7430931",
+                                   title="Fund of Funds", title_lang="en")
+    assert p["title_lang"] == "en"
+    validate("UpsertDisclosure", 1, p)
+
+
+def test_upsert_disclosure_omits_an_unstated_title_language():
+    """A programme-language fallback title does not say which language it is."""
+    p = builders.upsert_disclosure(system="eu-cohesion", disclosure_id="Q1", title="t")
+    assert "title_lang" not in p
+    validate("UpsertDisclosure", 1, p)
