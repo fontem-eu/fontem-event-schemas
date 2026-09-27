@@ -681,6 +681,7 @@ def upsert_disclosure(
     filed_date: str | None = None,
     year: int | None = None,
     title: str | None = None,
+    title_lang: str | None = None,
     url: str | None = None,
     details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -699,7 +700,7 @@ def upsert_disclosure(
     for k, v in (
         ("disclosure_type", disclosure_type),
         ("filed_date", filed_date), ("year", year),
-        ("title", title), ("url", url),
+        ("title", title), ("title_lang", title_lang), ("url", url),
     ):
         if v is not None and v != "":
             out[k] = v
