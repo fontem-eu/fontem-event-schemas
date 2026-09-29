@@ -1,0 +1,13 @@
+{
+  "contract_key": "344226-2021",
+  "ted_notice_id": "344226-2021",
+  "title": "Construction Works and Associated Services",
+  "source_lang": "en",
+  "source_lang_origin": "stated",
+  "translations": {
+    "de": "Bauarbeiten und damit verbundene Dienstleistungen",
+    "fr": "Travaux de construction et services associés"
+  },
+  "method": "nebius:google/gemma-3-27b-it",
+  "translated_at": "2026-09-29T08:00:00Z"
+}

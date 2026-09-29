@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fontem.eu/v1/entities/TranslateContractTitle.json",
+  "title": "TranslateContractTitle",
+  "description": "Machine translations of a contract's title, emitted by the translation service. Keyed by contract_key, and scoped to the notice whose title was translated: a sink applies it to the :Contract only while that notice is still the contract's canonical one (the contract shows its latest notice's title), and never creates the contract. A modification that keeps the title does not produce a new one. Carries the source title so sinks need no prior state.",
+  "type": "object",
+  "required": [
+    "contract_key",
+    "ted_notice_id",
+    "title",
+    "source_lang_origin",
+    "translations"
+  ],
+  "properties": {
+    "contract_key": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The contract the title belongs to — UpsertContract.contract_key."
+    },
+    "ted_notice_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The notice whose title this is — UpsertContract.ted_notice_id."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The source title that was translated. The sink records it as title_translated_from, so a later change of title is seen as one."
+    },
+    "source_lang": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^([a-z]{2}|und)$",
+      "description": "ISO 639-1 code of the title's language, or 'und' when the model identified it while translating."
+    },
+    "source_lang_origin": {
+      "type": "string",
+      "enum": [
+        "stated",
+        "detected",
+        "unknown"
+      ],
+      "description": "Where source_lang came from: 'stated' by the source (the notice's title_lang, Kohesio's English-name column), 'detected' from the title's words by a model (see detected_by), or 'unknown'. A sink records a detected language as title_lang_detected, never as title_lang, which only a source states."
+    },
+    "detected_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The model that detected source_lang, when source_lang_origin is 'detected' (e.g. 'nebius:google/gemma-3-27b-it')."
+    },
+    "translations": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z]{2}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "ISO 639-1 language code -> translated title. EU official languages only; never the source language."
+    },
+    "method": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Translation provenance, e.g. 'nebius:google/gemma-3-27b-it', or 'backfill:neo4j' for a translation re-published from the graph."
+    },
+    "translated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

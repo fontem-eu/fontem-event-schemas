@@ -760,6 +760,88 @@ def translate_authority_name(
     return out
 
 
+
+# The translation fields both title events share, one per payload key.
+def _title_translation(  # pylint: disable=too-many-arguments
+    *,
+    title: str,
+    translations: dict[str, str],
+    source_lang_origin: str,
+    source_lang: str | None,
+    detected_by: str | None,
+    method: str | None,
+    translated_at: str | None,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "title": title,
+        "source_lang_origin": source_lang_origin,
+        "translations": {
+            k: v for k, v in translations.items() if v and str(v).strip()
+        },
+    }
+    for key, value in (("source_lang", source_lang), ("detected_by", detected_by),
+                       ("method", method), ("translated_at", translated_at)):
+        if value:
+            out[key] = value
+    return out
+
+
+# One kwarg per payload key; the shared ones are validated by the schema.
+def translate_contract_title(  # pylint: disable=too-many-arguments
+    *,
+    contract_key: str,
+    ted_notice_id: str,
+    title: str,
+    translations: dict[str, str],
+    source_lang_origin: str,
+    source_lang: str | None = None,
+    detected_by: str | None = None,
+    method: str | None = None,
+    translated_at: str | None = None,
+) -> dict[str, Any]:
+    """Build a TranslateContractTitle payload (v1).
+
+    Scoped to the notice whose ``title`` was translated: a sink applies
+    it to the contract only while that notice is its canonical one, and
+    never creates the contract. Blank translations are dropped.
+    """
+    return {
+        "contract_key": contract_key,
+        "ted_notice_id": ted_notice_id,
+        **_title_translation(
+            title=title, translations=translations,
+            source_lang_origin=source_lang_origin, source_lang=source_lang,
+            detected_by=detected_by, method=method, translated_at=translated_at,
+        ),
+    }
+
+
+# One kwarg per payload key; the shared ones are validated by the schema.
+def translate_disclosure_title(  # pylint: disable=too-many-arguments
+    *,
+    system: str,
+    disclosure_id: str,
+    title: str,
+    translations: dict[str, str],
+    source_lang_origin: str,
+    source_lang: str | None = None,
+    detected_by: str | None = None,
+    method: str | None = None,
+    translated_at: str | None = None,
+) -> dict[str, Any]:
+    """Build a TranslateDisclosureTitle payload (v1). Blank translations
+    are dropped; a sink never creates the disclosure."""
+    return {
+        "system": system,
+        "disclosure_id": disclosure_id,
+        **_title_translation(
+            title=title, translations=translations,
+            source_lang_origin=source_lang_origin, source_lang=source_lang,
+            detected_by=detected_by, method=method, translated_at=translated_at,
+        ),
+    }
+
+
 def assert_same_as(
     *,
     a_iri: str,

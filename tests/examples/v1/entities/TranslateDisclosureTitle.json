@@ -1,0 +1,14 @@
+{
+  "system": "eu-cohesion",
+  "disclosure_id": "Q7493158",
+  "title": "Travaux de voirie à Thessalonique",
+  "source_lang": "fr",
+  "source_lang_origin": "detected",
+  "detected_by": "nebius:google/gemma-3-27b-it",
+  "translations": {
+    "en": "Road works in Thessaloniki",
+    "el": "Οδικά έργα στη Θεσσαλονίκη"
+  },
+  "method": "nebius:google/gemma-3-27b-it",
+  "translated_at": "2026-09-29T08:00:00Z"
+}
