@@ -58,6 +58,8 @@ _EVENT_TYPE_CATEGORY: dict[str, str] = {
     "UpsertExchangeRate":     "entities",
     "UpsertPetition":         "entities",
     "TranslateAuthorityName": "entities",
+    "TranslateContractTitle": "entities",
+    "TranslateDisclosureTitle": "entities",
     # consolidation
     "AssertSameAs": "consolidation",
     "RetractSameAs": "consolidation",

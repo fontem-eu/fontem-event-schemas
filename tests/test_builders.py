@@ -769,3 +769,43 @@ def test_upsert_disclosure_omits_an_unstated_title_language():
     p = builders.upsert_disclosure(system="eu-cohesion", disclosure_id="Q1", title="t")
     assert "title_lang" not in p
     validate("UpsertDisclosure", 1, p)
+
+
+# ── title translations ─────────────────────────────────────────────
+
+
+def _contract_translation(**over):
+    kwargs = {"contract_key": "344226-2021", "ted_notice_id": "344226-2021",
+              "title": "Roboty budowlane", "translations": {"en": "Construction works"},
+              "source_lang_origin": "stated", "source_lang": "pl"}
+    kwargs.update(over)
+    return builders.translate_contract_title(**kwargs)
+
+
+def test_a_title_translation_drops_blank_values_and_unset_fields():
+    payload = _contract_translation(translations={"en": "Works", "de": " ", "fr": ""},
+                                    source_lang=None)
+    assert payload["translations"] == {"en": "Works"}
+    assert "source_lang" not in payload and "detected_by" not in payload
+
+
+@pytest.mark.parametrize("bad", [
+    {"translations": {}},                        # nothing translated
+    {"source_lang_origin": "guessed"},           # only stated / detected / unknown
+    {"source_lang": "pol"},                      # ISO 639-1 or 'und'
+    {"translations": {"eng": "Works"}},          # keys are ISO 639-1 codes
+])
+def test_a_title_translation_the_schema_refuses(bad):
+    payload = _contract_translation()
+    payload.update(bad)
+    with pytest.raises(EventValidationError):
+        validate("TranslateContractTitle", 1, payload)
+
+
+def test_a_disclosure_title_translation_is_keyed_like_the_disclosure():
+    payload = builders.translate_disclosure_title(
+        system="eu-cohesion", disclosure_id="Q7", title="Fondų fondas",
+        translations={"en": "Fund of Funds"}, source_lang_origin="detected",
+        source_lang="lt", detected_by="nebius:google/gemma-3-27b-it")
+    validate("TranslateDisclosureTitle", 1, payload)
+    assert (payload["system"], payload["disclosure_id"]) == ("eu-cohesion", "Q7")
