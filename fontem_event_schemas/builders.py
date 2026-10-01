@@ -339,6 +339,7 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     country: str | None = None,
     procedure_type: str | None = None,
     tenders_received: int | None = None,
+    tenders_received_raw: int | None = None,
     award_criterion_type: str | None = None,
     submission_deadline: str | None = None,
     is_framework: bool | None = None,
@@ -429,6 +430,8 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
     once (duplicates are collapsed here; an empty list means the
     notice was cleaned and nothing fired). ``value_raw`` is the award
     amount verbatim as published, before scale correction or FX;
+    ``tenders_received_raw`` is the lot's bidder count as published,
+    beside the cleaned ``tenders_received``;
     ``value_quarantine_reason`` says why a value was withheld and now
     also carries cleaning rule ids such as
     ``ambiguous_scale_x100_or_x1000``.
@@ -504,6 +507,7 @@ def upsert_contract(  # pylint: disable=too-many-arguments,too-many-positional-a
         ("country", country),
         ("procedure_type", procedure_type),
         ("tenders_received", tenders_received),
+        ("tenders_received_raw", tenders_received_raw),
         ("award_criterion_type", award_criterion_type),
         ("submission_deadline", submission_deadline),
         ("is_framework", is_framework),
