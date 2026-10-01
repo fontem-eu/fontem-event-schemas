@@ -328,6 +328,13 @@
       "minimum": 0,
       "description": "Number of tenders received for the award's lot. A value of 1 is the single-bidder red flag (the headline EC Single Market Scoreboard indicator)."
     },
+    "tenders_received_raw": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "The lot's bidder count exactly as the notice published it, before the cleaning stage. tenders_received is the platform's reading: a published 999 (a placeholder) or a count above 10,000 (money or a reference typed into the field: 2,416,436 on 148462-2026) is withheld there, or replaced by another total the same lot publishes, and the published figure stays here so the two can always be compared."
+    },
     "award_criterion_type": {
       "type": [
         "string",

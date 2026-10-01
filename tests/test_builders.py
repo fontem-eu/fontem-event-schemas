@@ -508,6 +508,16 @@ def test_upsert_contract_cleaning_rules_keep_order_and_collapse_repeats():
     validate("UpsertContract", 1, p)
 
 
+def test_upsert_contract_keeps_the_published_bidder_count_beside_the_reading():
+    """A placeholder or an impossible count is withheld from
+    tenders_received; the published figure stays on the event."""
+    p = builders.upsert_contract(
+        ted_notice_id="148462-2026", tenders_received=None, tenders_received_raw=2416436)
+    assert "tenders_received" not in p
+    assert p["tenders_received_raw"] == 2416436
+    validate("UpsertContract", 1, p)
+
+
 def test_upsert_contract_value_raw_zero_survives():
     """A published '0' is non-disclosure, not absence: the string "0"
     is not "" and must be kept verbatim."""
