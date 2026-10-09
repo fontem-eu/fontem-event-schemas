@@ -1,0 +1,15 @@
+{
+    "system": "eu-lobbying",
+    "disclosure_id": "9218245390-27",
+    "field": "goals",
+    "text": "Die Interessen der deutschen Brauwirtschaft gegenüber den Institutionen der Europäischen Union vertreten.",
+    "source_lang": "de",
+    "source_lang_origin": "detected",
+    "detected_by": "nebius:deepseek-ai/DeepSeek-V4-Flash-0731",
+    "translations": {
+        "en": "Representing the interests of the German brewing industry towards the institutions of the European Union.",
+        "fr": "Représenter les intérêts de la brasserie allemande auprès des institutions de l'Union européenne."
+    },
+    "method": "linguistics:nebius",
+    "translated_at": "2026-10-09T12:00:00Z"
+}

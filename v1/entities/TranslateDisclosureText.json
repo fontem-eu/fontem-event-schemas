@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fontem.eu/v1/entities/TranslateDisclosureText.json",
+  "title": "TranslateDisclosureText",
+  "description": "Machine translations of one free-text field of a disclosure (e.g. a lobbying registrant's goals), emitted by the translation service. Keyed by (system, disclosure_id) as UpsertDisclosure is, the field named by `field`; a sink applies it to the existing disclosure and never creates one. Carries the source text, so a sink can drop a translation of text the disclosure no longer has.",
+  "type": "object",
+  "required": [
+    "system",
+    "disclosure_id",
+    "field",
+    "text",
+    "source_lang_origin",
+    "translations"
+  ],
+  "properties": {
+    "system": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UpsertDisclosure.system, e.g. 'eu-lobbying'."
+    },
+    "disclosure_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UpsertDisclosure.disclosure_id."
+    },
+    "field": {
+      "type": "string",
+      "pattern": "^[a-z][a-z_]{1,40}$",
+      "description": "The UpsertDisclosure details key the text is, e.g. 'goals' (stored as detail_goals). A sink builds property names from it."
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The source text that was translated."
+    },
+    "source_lang": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^([a-z]{2}|und)$",
+      "description": "ISO 639-1 code of the source text's language, or 'und' when nobody could tell."
+    },
+    "source_lang_origin": {
+      "type": "string",
+      "enum": [
+        "stated",
+        "detected",
+        "unknown"
+      ],
+      "description": "Where source_lang came from: 'stated' by the source, 'detected' from the text by a model (see detected_by), or 'unknown'."
+    },
+    "detected_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The model that detected source_lang, when source_lang_origin is 'detected'."
+    },
+    "translations": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z]{2}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "ISO 639-1 code -> translated text. EU official languages only; never the source language."
+    },
+    "method": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Provenance, e.g. 'linguistics:nebius'."
+    },
+    "translated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

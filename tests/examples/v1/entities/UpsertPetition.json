@@ -28,5 +28,39 @@
     "answer_refs": [
         "C(2026)4110"
     ],
-    "latest_update": "2026-06-16"
+    "latest_update": "2026-06-16",
+    "title_lang": "en",
+    "objectives": "Require publishers that sell or license videogames to consumers in the European Union (or related features and assets sold for videogames they operate) to leave said videogames in a working (playable) state.",
+    "versions": {
+        "en": {
+            "title": "Stop Destroying Videogames",
+            "objectives": "Require publishers ...",
+            "support_link": "https://eci.ec.europa.eu/045/public/?lg=en"
+        },
+        "fr": {
+            "title": "Stop à la destruction des jeux vidéo",
+            "objectives": "Obliger les éditeurs ..."
+        }
+    },
+    "categories": [
+        "JUST",
+        "TRADE"
+    ],
+    "register_id": 7834,
+    "register_url": "https://citizens-initiative.europa.eu/initiatives/details/2024/000007_en",
+    "verified_supporters": 1294188,
+    "verified_countries": [
+        "DE",
+        "FR"
+    ],
+    "verified_counts": [
+        229472,
+        95817
+    ],
+    "verified_after_submission": [
+        false,
+        false
+    ],
+    "representative_country": "de",
+    "answer_communication_url": "https://ec.europa.eu/transparency/documents-register/detail?ref=C(2026)4110"
 }

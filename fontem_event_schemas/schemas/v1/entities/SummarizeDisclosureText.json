@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fontem.eu/v1/entities/SummarizeDisclosureText.json",
+  "title": "SummarizeDisclosureText",
+  "description": "A short summary, about a tweet long, of one free-text field of a disclosure (e.g. a lobbying registrant's goals), in the source language and machine-translated into the other EU languages, emitted by the translation service. Keyed and applied as TranslateDisclosureText is.",
+  "type": "object",
+  "required": [
+    "system",
+    "disclosure_id",
+    "field",
+    "text",
+    "summaries"
+  ],
+  "properties": {
+    "system": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UpsertDisclosure.system, e.g. 'eu-lobbying'."
+    },
+    "disclosure_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UpsertDisclosure.disclosure_id."
+    },
+    "field": {
+      "type": "string",
+      "pattern": "^[a-z][a-z_]{1,40}$",
+      "description": "The UpsertDisclosure details key the text is, e.g. 'goals' (stored as detail_goals). A sink builds property names from it."
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The source text that was summarised."
+    },
+    "source_lang": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^([a-z]{2}|und)$",
+      "description": "ISO 639-1 code of the source text's language, or 'und' when nobody could tell."
+    },
+    "source_lang_origin": {
+      "type": "string",
+      "enum": [
+        "stated",
+        "detected",
+        "unknown"
+      ],
+      "description": "Where source_lang came from: 'stated' by the source, 'detected' from the text by a model (see detected_by), or 'unknown'."
+    },
+    "detected_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The model that detected source_lang, when source_lang_origin is 'detected'."
+    },
+    "summaries": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z]{2}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "ISO 639-1 code -> summary. The source language's own summary included; the others are its machine translations."
+    },
+    "method": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Provenance, e.g. 'linguistics:nebius'."
+    },
+    "summarized_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}
