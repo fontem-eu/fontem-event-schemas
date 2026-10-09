@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "UpsertPetition",
-  "description": "A public petition from an official register (ECI, parliament platforms). Organizer names come from the upstream public register (Art 6(1)(e)); emails are never carried. Milestone dates are flattened for chart/query ergonomics.",
+  "description": "A public petition from an official register (ECI, parliament platforms). Top-level texts are the English version; `versions` carries every language the register publishes, the original among them (see title_lang). Organizer names come from the upstream public register (Art 6(1)(e)); e-mail addresses are never carried, nor data-protection officers. Milestone dates are flattened for chart/query ergonomics; per-country counts and per-sponsor funding ride as parallel arrays.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,14 +18,15 @@
       "description": "Register id, e.g. ECI(2024)000007"
     },
     "title": {
-      "type": "string"
+      "type": "string",
+      "description": "The English title."
     },
     "status": {
       "type": "string"
     },
     "objectives": {
       "type": "string",
-      "description": "Short description/objectives excerpt"
+      "description": "The English objectives in full, as plain text (paragraphs and list items on lines of their own)."
     },
     "registration_date": {
       "type": "string"
@@ -87,6 +88,248 @@
     },
     "latest_update": {
       "type": "string"
+    },
+    "title_lang": {
+      "type": "string",
+      "pattern": "^[a-z]{2}$",
+      "description": "ISO 639-1 code of the version the initiative was registered in (the register's `original` version)."
+    },
+    "annex_text": {
+      "type": "string",
+      "description": "The English annex in full, as plain text: the organisers' longer explanation, where they gave one."
+    },
+    "treaties": {
+      "type": "string",
+      "description": "The English text naming the Treaty provisions the initiative relies on."
+    },
+    "website": {
+      "type": "string",
+      "description": "The organisers' website."
+    },
+    "versions": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z]{2}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "objectives": {
+            "type": "string",
+            "description": "Plain text, in full."
+          },
+          "annex_text": {
+            "type": "string",
+            "description": "Plain text, in full."
+          },
+          "treaties": {
+            "type": "string"
+          },
+          "website": {
+            "type": "string"
+          },
+          "support_link": {
+            "type": "string"
+          },
+          "decision_url": {
+            "type": "string",
+            "description": "The registration decision in this language."
+          }
+        }
+      },
+      "description": "Every language version the register publishes, keyed by ISO 639-1 code: official texts, not machine translations."
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The register's subject codes, e.g. ENV, JUST, SANTE."
+    },
+    "register_id": {
+      "type": "integer",
+      "description": "The register's numeric id of the initiative (its API's `id`)."
+    },
+    "register_url": {
+      "type": "string",
+      "description": "The initiative's public page on the register."
+    },
+    "online_supporters": {
+      "type": "integer",
+      "description": "Statements of support collected online, as last reported (sosReport.totalSignatures)."
+    },
+    "supporters_updated_at": {
+      "type": "string",
+      "description": "When online_supporters was last reported (ISO date)."
+    },
+    "supporter_countries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "ISO 3166-1 alpha-2 codes, parallel to supporter_counts."
+    },
+    "supporter_counts": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "description": "Online statements of support per country, parallel to supporter_countries."
+    },
+    "verified_supporters": {
+      "type": "integer",
+      "description": "Statements of support verified by the member states, at submission."
+    },
+    "verified_countries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "ISO 3166-1 alpha-2 codes, parallel to verified_counts."
+    },
+    "verified_counts": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "description": "Verified statements per country, parallel to verified_countries."
+    },
+    "verified_after_submission": {
+      "type": "array",
+      "items": {
+        "type": "boolean"
+      },
+      "description": "Per verified country: reported after the submission, parallel to verified_countries."
+    },
+    "ongoing_date": {
+      "type": "string",
+      "description": "When the initiative entered ONGOING (ISO date)."
+    },
+    "verification_date": {
+      "type": "string",
+      "description": "When verification started (ISO date)."
+    },
+    "withdrawn_date": {
+      "type": "string",
+      "description": "When it was withdrawn (ISO date)."
+    },
+    "rejected_date": {
+      "type": "string",
+      "description": "When registration was refused (ISO date)."
+    },
+    "insufficient_support_date": {
+      "type": "string",
+      "description": "When it closed without enough support (ISO date)."
+    },
+    "insufficient_support_after_verification_date": {
+      "type": "string",
+      "description": "When verification found too few valid statements (ISO date)."
+    },
+    "early_closure_date": {
+      "type": "string",
+      "description": "When the organisers closed collection early (ISO date)."
+    },
+    "partially_registered": {
+      "type": "boolean",
+      "description": "Registered for part of what it asked."
+    },
+    "sponsor_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Sponsors as the register names them ('[ANONYMIZED]' where upstream anonymised them); parallel arrays."
+    },
+    "sponsor_amounts_eur": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "description": "Per sponsor, in euros, parallel to sponsor_names."
+    },
+    "sponsor_dates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Per sponsor, ISO date, parallel to sponsor_names."
+    },
+    "sponsor_private": {
+      "type": "array",
+      "items": {
+        "type": "boolean"
+      },
+      "description": "Per sponsor: a private person, parallel to sponsor_names."
+    },
+    "sponsor_anonymized": {
+      "type": "array",
+      "items": {
+        "type": "boolean"
+      },
+      "description": "Per sponsor: anonymised upstream, parallel to sponsor_names."
+    },
+    "sponsor_other_support": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Per sponsor: support other than money, '' where none, parallel to sponsor_names."
+    },
+    "funding_updated_at": {
+      "type": "string",
+      "description": "When the funding was last updated (ISO date)."
+    },
+    "funding_document_name": {
+      "type": "string",
+      "description": "The funding report's file name, where one is attached."
+    },
+    "answer_communication_url": {
+      "type": "string",
+      "description": "The Commission's communication answering the initiative."
+    },
+    "answer_annex_url": {
+      "type": "string",
+      "description": "Its annex."
+    },
+    "answer_press_release_url": {
+      "type": "string",
+      "description": "The press release."
+    },
+    "answer_follow_up_url": {
+      "type": "string",
+      "description": "The follow-up page."
+    },
+    "registration_decision_url": {
+      "type": "string",
+      "description": "The English registration decision."
+    },
+    "registration_decision_corrigendum": {
+      "type": "string",
+      "description": "CELEX number of a corrigendum to the registration decision."
+    },
+    "annex_document_name": {
+      "type": "string",
+      "description": "File name of the annex document the organisers attached."
+    },
+    "annex_document_id": {
+      "type": "integer",
+      "description": "The register's id of that document."
+    },
+    "draft_legal_act_name": {
+      "type": "string",
+      "description": "File name of the draft legal act the organisers attached."
+    },
+    "draft_legal_act_id": {
+      "type": "integer",
+      "description": "The register's id of that document."
+    },
+    "representative_country": {
+      "type": "string",
+      "description": "ISO 3166-1 alpha-2 country of residence of the organisers' representative."
     }
   }
 }

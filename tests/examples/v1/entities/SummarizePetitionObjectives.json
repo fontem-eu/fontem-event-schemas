@@ -1,0 +1,12 @@
+{
+    "system": "eu-eci",
+    "petition_id": "ECI(2024)000007",
+    "objectives": "Require publishers that sell or license videogames to consumers in the European Union (or related features and assets sold for videogames they operate) to leave said videogames in a working (playable) state.",
+    "source_lang": "en",
+    "summaries": {
+        "en": "Asks the EU to require game publishers to keep games they sold playable after they end support.",
+        "fr": "Demande à l'UE d'obliger les éditeurs à garder jouables les jeux vendus après la fin de leur support."
+    },
+    "method": "linguistics:nebius",
+    "summarized_at": "2026-10-09T12:00:00Z"
+}

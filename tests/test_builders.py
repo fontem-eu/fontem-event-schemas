@@ -267,6 +267,85 @@ def test_upsert_petition_validates_and_omits_unset():
     _validate("UpsertPetition", 1, bare)
 
 
+def test_a_petition_carries_every_language_the_register_publishes():
+    """The ECI register publishes official versions in up to 24 languages,
+    one of them the original: all of them travel, plus the full texts."""
+    link = "https://eci.ec.europa.eu/045/public/?lg="
+    versions = {lang: {"title": f"Titre {lang}", "objectives": "Long text.\n• point",
+                       "annex_text": "Annexe", "support_link": link + lang}
+                for lang in ("bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "ga",
+                             "hr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "pt", "ro", "sk",
+                             "sl", "sv")}
+    p = builders.upsert_petition(
+        system="eu-eci", petition_id="ECI(2021)000006", title="Save Cruelty Free Cosmetics",
+        title_lang="en", objectives="With the EU ban on cosmetics tests..." * 40,
+        versions=versions, categories=["ENV", "SANTE"], register_id=1295,
+        supporter_countries=["NL", "FR"], supporter_counts=[40695, 0],
+        verified_supporters=1217916, partially_registered=False, total_supporters=0,
+        sponsor_names=["Eurogroup for Animals", "[ANONYMIZED]"],
+        sponsor_amounts_eur=[25099.38, 0.0], sponsor_private=[False, True],
+    )
+    assert len(p["versions"]) == 24 and len(p["objectives"]) > 500
+    # Zero and False are facts, not absences.
+    assert p["total_supporters"] == 0 and p["partially_registered"] is False
+    validate("UpsertPetition", 1, p)
+
+
+def test_a_petition_version_must_be_keyed_by_a_language_code():
+    """Sinks write title_<lang>: a key that is not a lower-case code is refused."""
+    p = builders.upsert_petition(system="eu-eci", petition_id="ECI(2021)000006",
+                                 versions={"EN": {"title": "Upper-case key"}})
+    with pytest.raises(EventValidationError):
+        validate("UpsertPetition", 1, p)
+
+
+def test_a_misspelled_petition_field_is_refused_by_the_builder():
+    """Caught at the producer, not as a DLQ entry in every sink."""
+    with pytest.raises(TypeError, match="objectivs"):
+        builders.upsert_petition(system="eu-eci", petition_id="p-1", objectivs="typo")
+
+
+def test_a_lobbying_goal_translation_and_its_summaryvalidate():
+    """What the translation service publishes for a registrant's goals."""
+    goals = "Die Interessen der deutschen Brauwirtschaft gegenüber der EU vertreten."
+    t = builders.translate_disclosure_text(
+        system="eu-lobbying", disclosure_id="1234567890-12", field="goals", text=goals,
+        translations={"en": "Representing the German brewing industry towards the EU.",
+                      "fr": " "},
+        source_lang_origin="detected", source_lang="de",
+        detected_by="nebius:deepseek-ai/DeepSeek-V4-Flash-0731", method="linguistics:nebius")
+    assert set(t["translations"]) == {"en"}                       # blank dropped
+    validate("TranslateDisclosureText", 1, t)
+    s = builders.summarize_disclosure_text(
+        system="eu-lobbying", disclosure_id="1234567890-12", field="goals", text=goals,
+        summaries={"de": "Vertritt die deutsche Brauwirtschaft.",
+                   "en": "Represents German brewers."},
+        source_lang_origin="detected", source_lang="de")
+    validate("SummarizeDisclosureText", 1, s)
+
+
+@pytest.mark.parametrize("field", ["Goals", "goals;drop", "g", "detail goals", ""])
+def test_a_disclosure_text_field_must_be_a_plain_identifier(field):
+    """Sinks build property names from it (detail_<field>_<lang>)."""
+    t = builders.translate_disclosure_text(
+        system="eu-lobbying", disclosure_id="1", field=field, text="x",
+        translations={"en": "x"}, source_lang_origin="unknown")
+    with pytest.raises(EventValidationError):
+        validate("TranslateDisclosureText", 1, t)
+
+
+def test_a_petition_summary_validates_and_needs_the_text_it_summarises():
+    """The summarised text travels so a sink can drop a stale summary."""
+    s = builders.summarize_petition_objectives(
+        system="eu-eci", petition_id="ECI(2024)000007", objectives="Require publishers...",
+        summaries={"en": "Asks the EU to stop publishers disabling games people bought."},
+        source_lang="en", method="linguistics:nebius")
+    validate("SummarizePetitionObjectives", 1, s)
+    s.pop("objectives")
+    with pytest.raises(EventValidationError):
+        validate("SummarizePetitionObjectives", 1, s)
+
+
 def test_upsert_contract_threads_parties_with_every_field():
     """A two-member consortium plus a named tenderer round-trips through
     the builder and validates — every parties field exercised."""

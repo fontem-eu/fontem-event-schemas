@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.fontem.eu/v1/entities/SummarizePetitionObjectives.json",
+  "title": "SummarizePetitionObjectives",
+  "description": "A short summary of a petition's objectives, about a tweet long, in the source language and machine-translated into the other EU languages, emitted by the translation service. Keyed by (system, petition_id) as UpsertPetition is; a sink applies it to the existing petition and never creates one. Carries the objectives it summarises, so a sink can drop a summary of text the petition no longer has.",
+  "type": "object",
+  "required": [
+    "system",
+    "petition_id",
+    "objectives",
+    "summaries"
+  ],
+  "properties": {
+    "system": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UpsertPetition.system, e.g. 'eu-eci'."
+    },
+    "petition_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UpsertPetition.petition_id."
+    },
+    "objectives": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The objectives that were summarised (UpsertPetition.objectives)."
+    },
+    "source_lang": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^([a-z]{2}|und)$",
+      "description": "ISO 639-1 code of the source text's language, or 'und' when nobody could tell."
+    },
+    "summaries": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z]{2}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "ISO 639-1 code -> summary. The source language's own summary included; the others are its machine translations."
+    },
+    "method": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Provenance, e.g. 'linguistics:nebius'."
+    },
+    "summarized_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

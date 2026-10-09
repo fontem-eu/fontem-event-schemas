@@ -846,6 +846,108 @@ def translate_disclosure_title(  # pylint: disable=too-many-arguments
     }
 
 
+# The fields both disclosure-text events share, one per payload key.
+def _disclosure_text(  # pylint: disable=too-many-arguments
+    *,
+    system: str,
+    disclosure_id: str,
+    field: str,
+    text: str,
+    source_lang_origin: str | None,
+    source_lang: str | None,
+    detected_by: str | None,
+    method: str | None,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {"system": system, "disclosure_id": disclosure_id,
+                           "field": field, "text": text}
+    for key, value in (("source_lang_origin", source_lang_origin),
+                       ("source_lang", source_lang), ("detected_by", detected_by),
+                       ("method", method)):
+        if value:
+            out[key] = value
+    return out
+
+
+def _texts(by_lang: dict[str, str]) -> dict[str, str]:
+    return {k: v for k, v in by_lang.items() if v and str(v).strip()}
+
+
+# One kwarg per payload key; the shared ones are validated by the schema.
+def translate_disclosure_text(  # pylint: disable=too-many-arguments
+    *,
+    system: str,
+    disclosure_id: str,
+    field: str,
+    text: str,
+    translations: dict[str, str],
+    source_lang_origin: str,
+    source_lang: str | None = None,
+    detected_by: str | None = None,
+    method: str | None = None,
+    translated_at: str | None = None,
+) -> dict[str, Any]:
+    """Build a TranslateDisclosureText payload (v1): translations of the
+    disclosure's ``details[field]``. Blank translations are dropped; a
+    sink never creates the disclosure."""
+    out = _disclosure_text(system=system, disclosure_id=disclosure_id, field=field, text=text,
+                           source_lang_origin=source_lang_origin, source_lang=source_lang,
+                           detected_by=detected_by, method=method)
+    out["translations"] = _texts(translations)
+    if translated_at:
+        out["translated_at"] = translated_at
+    return out
+
+
+# One kwarg per payload key; the shared ones are validated by the schema.
+def summarize_disclosure_text(  # pylint: disable=too-many-arguments
+    *,
+    system: str,
+    disclosure_id: str,
+    field: str,
+    text: str,
+    summaries: dict[str, str],
+    source_lang_origin: str | None = None,
+    source_lang: str | None = None,
+    detected_by: str | None = None,
+    method: str | None = None,
+    summarized_at: str | None = None,
+) -> dict[str, Any]:
+    """Build a SummarizeDisclosureText payload (v1): a short summary of the
+    disclosure's ``details[field]`` per language, the source language's
+    own included. Blank summaries are dropped."""
+    out = _disclosure_text(system=system, disclosure_id=disclosure_id, field=field, text=text,
+                           source_lang_origin=source_lang_origin, source_lang=source_lang,
+                           detected_by=detected_by, method=method)
+    out["summaries"] = _texts(summaries)
+    if summarized_at:
+        out["summarized_at"] = summarized_at
+    return out
+
+
+# One kwarg per payload key; the shared ones are validated by the schema.
+def summarize_petition_objectives(  # pylint: disable=too-many-arguments
+    *,
+    system: str,
+    petition_id: str,
+    objectives: str,
+    summaries: dict[str, str],
+    source_lang: str | None = None,
+    method: str | None = None,
+    summarized_at: str | None = None,
+) -> dict[str, Any]:
+    """Build a SummarizePetitionObjectives payload (v1): a short summary of
+    the petition's objectives per language, the source language's own
+    included. Blank summaries are dropped; a sink never creates the
+    petition."""
+    out: dict[str, Any] = {"system": system, "petition_id": petition_id,
+                           "objectives": objectives, "summaries": _texts(summaries)}
+    for key, value in (("source_lang", source_lang), ("method", method),
+                       ("summarized_at", summarized_at)):
+        if value:
+            out[key] = value
+    return out
+
+
 def assert_same_as(
     *,
     a_iri: str,
@@ -957,52 +1059,40 @@ def purge_subject(
     return payload
 
 
-def upsert_petition(  # pylint: disable=too-many-arguments,too-many-locals
-    *,
-    system: str,
-    petition_id: str,
-    title: str | None = None,
-    status: str | None = None,
-    objectives: str | None = None,
-    registration_date: str | None = None,
-    collection_start_date: str | None = None,
-    collection_deadline: str | None = None,
-    closed_date: str | None = None,
-    submitted_date: str | None = None,
-    answered_date: str | None = None,
-    total_supporters: int | None = None,
-    support_link: str | None = None,
-    organizer_names: list[str] | None = None,
-    organizer_roles: list[str] | None = None,
-    organizer_countries: list[str] | None = None,
-    funding_total_eur: float | None = None,
-    funding_sponsor_count: int | None = None,
-    registration_decision_celex: str | None = None,
-    answer_refs: list[str] | None = None,
-    latest_update: str | None = None,
-) -> dict[str, Any]:
-    """Build an UpsertPetition payload (v1)."""
-    out: dict[str, Any] = {
-        "system": system,
-        "petition_id": petition_id,
-    }
-    for k, v in (
-        ("title", title), ("status", status), ("objectives", objectives),
-        ("registration_date", registration_date),
-        ("collection_start_date", collection_start_date),
-        ("collection_deadline", collection_deadline),
-        ("closed_date", closed_date), ("submitted_date", submitted_date),
-        ("answered_date", answered_date),
-        ("total_supporters", total_supporters),
-        ("support_link", support_link),
-        ("organizer_names", organizer_names),
-        ("organizer_roles", organizer_roles),
-        ("organizer_countries", organizer_countries),
-        ("funding_total_eur", funding_total_eur),
-        ("funding_sponsor_count", funding_sponsor_count),
-        ("registration_decision_celex", registration_decision_celex),
-        ("answer_refs", answer_refs), ("latest_update", latest_update),
-    ):
-        if v is not None:
-            out[k] = v
+#: UpsertPetition's optional keys, in schema order: the builder passes each
+#: one through when given, so a field added to the schema needs only a name here.
+_PETITION_FIELDS = (
+    "title", "title_lang", "status", "objectives", "annex_text", "treaties", "website",
+    "versions", "categories", "register_id", "register_url",
+    "registration_date", "collection_start_date", "collection_deadline", "ongoing_date",
+    "closed_date", "verification_date", "submitted_date", "answered_date",
+    "withdrawn_date", "rejected_date", "insufficient_support_date",
+    "insufficient_support_after_verification_date", "early_closure_date",
+    "partially_registered",
+    "total_supporters", "online_supporters", "supporters_updated_at",
+    "supporter_countries", "supporter_counts",
+    "verified_supporters", "verified_countries", "verified_counts", "verified_after_submission",
+    "support_link", "organizer_names", "organizer_roles", "organizer_countries",
+    "representative_country",
+    "funding_total_eur", "funding_sponsor_count", "funding_updated_at", "funding_document_name",
+    "sponsor_names", "sponsor_amounts_eur", "sponsor_dates", "sponsor_private",
+    "sponsor_anonymized", "sponsor_other_support",
+    "registration_decision_celex", "registration_decision_url",
+    "registration_decision_corrigendum",
+    "annex_document_name", "annex_document_id", "draft_legal_act_name", "draft_legal_act_id",
+    "answer_refs", "answer_communication_url", "answer_annex_url",
+    "answer_press_release_url", "answer_follow_up_url",
+    "latest_update",
+)
+
+
+def upsert_petition(*, system: str, petition_id: str, **fields: Any) -> dict[str, Any]:
+    """Build an UpsertPetition payload (v1). Every optional key of the
+    schema is a keyword; None is left out, False and 0 are kept. A key the
+    schema does not know is refused here rather than by every sink."""
+    unknown = set(fields) - set(_PETITION_FIELDS)
+    if unknown:
+        raise TypeError(f"upsert_petition: unknown field(s) {sorted(unknown)}")
+    out: dict[str, Any] = {"system": system, "petition_id": petition_id}
+    out.update({k: fields[k] for k in _PETITION_FIELDS if fields.get(k) is not None})
     return out
